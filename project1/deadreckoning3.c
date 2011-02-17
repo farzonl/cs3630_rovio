@@ -69,19 +69,19 @@ int main( int argc, char **argv ) {
         // drive in an hourglass shape
         rovio_turn(curl, Right, 3);
         sleep(1);
-        rovio_drive(curl, 25, Forward);
+        rovio_drive(curl, 34, Forward);
         sleep(1);
         rovio_turn(curl, Right, 3);
         sleep(1);
-        rovio_drive(curl, 15, Backward);
+        rovio_drive(curl, 24, Backward);
         sleep(1);
         rovio_turn(curl, Right, 3);
         sleep(1);
-        rovio_drive(curl, 25, Forward);
+        rovio_drive(curl, 34, Forward);
         sleep(1);
         rovio_turn(curl, Right, 3);
         sleep(1);
-        rovio_drive(curl, 15, Right);
+        rovio_drive(curl, 24, Right);
         sleep(1);
         
         /* always cleanup */ 
