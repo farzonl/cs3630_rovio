@@ -1,3 +1,5 @@
+#if !defined(__APPLE__) && !defined(__GNUC__)
+
 // SerialTerm.cpp : Serial Port Communication Interface
 // Doc: http://msdn.microsoft.com/library/default.asp?url=/library/en-us/dnfiles/html/msdn_serial.asp
 
@@ -209,4 +211,6 @@ void serialterm_close() {
 	CancelIo(h_port);
 	CloseHandle(h_port);
 }
+
+#endif
 
