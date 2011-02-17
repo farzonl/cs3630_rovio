@@ -7,7 +7,7 @@
 #include <curl/curl.h>
 #include <unistd.h>
 
-#define ROVIO_IP "143.215.110.22"
+#define ROVIO_IP "143.215.97.77"
 
 static CURLcode rovio_forward(CURL *curl, int n)
 {
@@ -33,6 +33,22 @@ static CURLcode rovio_turnright(CURL *curl, int n)
         res = curl_easy_perform(curl);
     }
     return res;
+}
+
+static CURLcode rovio_driveLeft(CURL *curl, int n) {
+  
+        CURLcode res;
+	int i;
+  
+	curl_easy_setopt(curl, CURLOPT_URL, 
+                         "http://143.215.97.77:80"
+                         "/rev.cgi?Cmd=nav&action=18&drive=3&speed=5");
+        for( i = 0; i<n; i++)
+            res = curl_easy_perform(curl);
+        sleep(1); 
+  
+  
+  
 }
 
 int main( int argc, char **argv ) {
