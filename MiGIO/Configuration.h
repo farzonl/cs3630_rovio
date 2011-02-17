@@ -13,15 +13,15 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define PLEO
-//#define ROVIO
+//#define PLEO
+#define ROVIO
 
-#define ROVIO_HOST "192.168.1.246"
+#define ROVIO_HOST "143.215.110.22"
 #define ROVIO_PORT "8080"
 #define PLEO_PORT "COM3"
 #define DEBUG 2
 
-//#define USE_CAMERA
+#define USE_CAMERA
 #define USE_CONTROLLER
 
 #endif
