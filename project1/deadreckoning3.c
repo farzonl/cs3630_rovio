@@ -30,6 +30,8 @@ static CURLcode rovio_drive(CURL *curl, int n, enum RovioDirection direction)
              "http://admin:admin1@" ROVIO_IP ":80"
              "/rev.cgi?Cmd=nav&action=18&drive=%d&speed=3", direction);
     
+    puts(buf);
+
     for(i = 0; i < n; i++){
         curl_easy_setopt(curl, CURLOPT_URL, buf);
         res = curl_easy_perform(curl);
@@ -37,14 +39,21 @@ static CURLcode rovio_drive(CURL *curl, int n, enum RovioDirection direction)
     return res;
 }
 
-static CURLcode rovio_turnright90(CURL *curl)
+// direction = Left or Right
+// n = 3 for 45, 7 for 90, technically in increments of 20 degrees
+static CURLcode rovio_turn(CURL *curl, enum RovioDirection direction, int n)
 {
     CURLcode res;
+    char buf[1024];
     int i;
     
-    curl_easy_setopt(curl, CURLOPT_URL, 
-                     "http://admin:admin1@" ROVIO_IP ":80"
-                     "/rev.cgi?Cmd=nav&action=18&drive=18&speed=5&angle=7");
+    snprintf(buf, sizeof(buf),
+             "http://admin:admin1@" ROVIO_IP ":80"
+             "/rev.cgi?Cmd=nav&action=18&drive=%d&speed=5&angle=%d", direction == Left ? 17 : 18, n);
+    
+    puts(buf);
+    
+    curl_easy_setopt(curl, CURLOPT_URL, buf);
     res = curl_easy_perform(curl);
     return res;
 }
@@ -57,12 +66,23 @@ int main( int argc, char **argv ) {
     curl = curl_easy_init();
     if(curl) {
         
-        for (i = 0; i <= 3; i++) {
-            rovio_drive(curl, 24, Forward);
-            sleep(1);
-            rovio_turnright90(curl);
-            sleep(1);
-        }
+        // drive in an hourglass shape
+        rovio_turn(curl, Right, 3);
+        sleep(1);
+        rovio_drive(curl, 25, Forward);
+        sleep(1);
+        rovio_turn(curl, Right, 3);
+        sleep(1);
+        rovio_drive(curl, 15, Backward);
+        sleep(1);
+        rovio_turn(curl, Right, 3);
+        sleep(1);
+        rovio_drive(curl, 25, Forward);
+        sleep(1);
+        rovio_turn(curl, Right, 3);
+        sleep(1);
+        rovio_drive(curl, 15, Right);
+        sleep(1);
         
         /* always cleanup */ 
         curl_easy_cleanup(curl);
