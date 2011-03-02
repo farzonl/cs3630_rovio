@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include "RobotInterfaceRovio.h"
 #include "HTTPInterface.h"
+#include "curl/curl.h"
 
 
 
@@ -78,6 +79,83 @@ void robotSendActuators(){
 	http_fetch( buf, NULL );
 
 }
+
+
+CURLcode rovio_forward(CURL *curl, int n,int s)
+{
+    CURLcode res;
+    int i;
+    for(i = 0; i < n; i++){
+
+
+        curl_easy_setopt(curl, CURLOPT_URL, 
+                         "http://" ROVIO_HOST ":" ROVIO_PORT
+                         "/rev.cgi?Cmd=nav&action=18&drive=1&speed=%d",s);
+        res = curl_easy_perform(curl);
+    }
+    return res;
+}
+
+CURLcode rovio_turnRightByDegree(CURL *curl, int n)
+{
+
+    CURLcode res;
+    int i;
+    for(i = 0; i < n; i++){
+        curl_easy_setopt(curl, CURLOPT_URL, 
+                         "http://" ROVIO_HOST ":" ROVIO_PORT
+                         "/rev.cgi?Cmd=nav&action=18&drive=18&speed=5");
+        res = curl_easy_perform(curl);
+    }
+    return res;
+}
+
+CURLcode rovio_turnLeftByDegree(CURL *curl, int n)
+{
+
+    CURLcode res;
+    int i;
+    for(i = 0; i < n; i++){
+        curl_easy_setopt(curl, CURLOPT_URL, 
+                         "http://" ROVIO_HOST ":" ROVIO_PORT
+                         "/rev.cgi?Cmd=nav&action=18&drive=17&speed=5");
+        res = curl_easy_perform(curl);
+    }
+    return res;
+}
+
+CURLcode rovio_driveLeft(CURL *curl, int n) {
+  
+        CURLcode res;
+	int i;
+  
+	curl_easy_setopt(curl, CURLOPT_URL, 
+                         "http://" ROVIO_HOST ":" ROVIO_PORT
+                         "/rev.cgi?Cmd=nav&action=18&drive=3&speed=5");
+        for( i = 0; i<n; i++)
+            res = curl_easy_perform(curl);
+	
+	return res;
+  
+}
+
+CURLcode rovio_driveRight(CURL *curl, int n) {
+  
+        CURLcode res;
+	int i;
+  
+	curl_easy_setopt(curl, CURLOPT_URL, 
+                         "http://" ROVIO_HOST ":" ROVIO_PORT
+                         "/rev.cgi?Cmd=nav&action=18&drive=4&speed=5");
+        for( i = 0; i<n; i++)
+            res = curl_easy_perform(curl);
+	
+	return res;
+  
+}
+
+
+
 
 void robotWait() {
 }

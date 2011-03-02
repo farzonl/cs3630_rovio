@@ -1,0 +1,41 @@
+﻿Build started 2/12/2011 3:19:48 PM.
+     1>Project "C:\Users\ana\Downloads\cvblobslib_OpenCV_v6\cvblobslib.vcxproj" on node 2 (rebuild target(s)).
+     1>_PrepareForClean:
+         Deleting file ".\Debug\cvblobslib.lastbuildstate".
+       InitializeBuildStatus:
+         Touching ".\Debug\cvblobslib.unsuccessfulbuild".
+       ClCompile:
+         C:\Program Files\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /I"c:\Archivos de programa\OpenCV\cv\include" /I"c:\Archivos de programa\OpenCV\cxcore\include\\" /I"c:\Archivos de programa\OpenCV\OtherLibs\HighGUI\\" /I"c:\Archivos de programa\OpenCV\cv\include\\" /I..\inspecta\matrix /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _LIB /D _VC80_UPGRADE=0x0600 /D _MBCS /D _AFXDLL /Gm /EHsc /RTC1 /MDd /GS /Gy- /fp:precise /Zc:wchar_t /Zc:forScope /Fo".\Debug\\" /Fd".\Debug\vc100.pdb" /FR".\Debug\\" /Gd /TP /analyze- /errorReport:prompt blob.cpp BlobExtraction.cpp BlobResult.cpp  /Qopenmp   /Qopenmp 
+     1>cl : Command line warning D9002: ignoring unknown option '/Qopenmp'
+     1>cl : Command line warning D9002: ignoring unknown option '/Qopenmp'
+         BlobResult.cpp
+         _WIN32_WINNT not defined. Defaulting to _WIN32_WINNT_MAXVER (see WinSDKVer.h)
+     1>c:\users\ana\downloads\cvblobslib_opencv_v6\blobresult.cpp(865): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files\microsoft visual studio 10.0\vc\include\stdio.h(234) : see declaration of 'fopen'
+         BlobExtraction.cpp
+         blob.cpp
+     1>c:\opencv2.2\include\opencv2\flann\logger.h(66): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files\microsoft visual studio 10.0\vc\include\stdio.h(234) : see declaration of 'fopen'
+         Generating Code...
+       Lib:
+         C:\Program Files\Microsoft Visual Studio 10.0\VC\bin\Lib.exe /OUT:".\Debug\cvblobslib.lib" /NOLOGO .\Debug\blob.obj
+         .\Debug\BlobExtraction.obj
+         .\Debug\BlobResult.obj
+         cvblobslib.vcxproj -> C:\Users\ana\Downloads\cvblobslib_OpenCV_v6\.\Debug\cvblobslib.lib
+       BscMake:
+         C:\Program Files\Microsoft Visual Studio 10.0\VC\bin\bscmake.exe /nologo /o".\Debug\cvblobslib.bsc" .\Debug\blob.sbr .\Debug\BlobExtraction.sbr .\Debug\BlobResult.sbr
+       PostBuildEvent:
+         mkdir lib
+         echo copiant Debug\cvblobslib.lib a lib\cvblobslib.lib
+         copy Debug\cvblobslib.lib lib\cvblobslib.lib
+         :VCEnd
+         copiant Debug\cvblobslib.lib a lib\cvblobslib.lib
+                 1 file(s) copied.
+       FinalizeBuildStatus:
+         Deleting file ".\Debug\cvblobslib.unsuccessfulbuild".
+         Touching ".\Debug\cvblobslib.lastbuildstate".
+     1>Done Building Project "C:\Users\ana\Downloads\cvblobslib_OpenCV_v6\cvblobslib.vcxproj" (rebuild target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:20.25

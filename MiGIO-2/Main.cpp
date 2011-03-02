@@ -36,8 +36,11 @@ using namespace std;
 int main(void)
 {
   http_interface_init();
+  CURL *curl;
+  curl = curl_easy_init();
+  
 
-  initCameras();
+  /*initCameras();*/
 #ifdef _WIN32
   //_beginthread(cameraThread,0,(void*)0);
 #else
@@ -45,7 +48,7 @@ int main(void)
   pthread_create(&thread, NULL, &cameraThread, NULL);
 #endif
 
-  //initConsole();
+  initConsole();
   initStatusWindow();
 
  #ifdef USE_CONTROLLER
@@ -57,12 +60,22 @@ int main(void)
 	  key = cvWaitKey(30); // Really a sleep with input
 	  if(key == 'q') break;
 
+	  /*
 #ifdef USE_CAMERA
 	  processCamera(); // Blank function
 #endif
+	  */
 
 #ifdef USE_CONTROLLER
-//	  robotSendActuators();
+	//robotSendActuators();
+	  if(curl) {
+		   //rovio_forward(curl, 18,5);
+		  //rovio_driveLeft(curl,10); 
+		  //rovio_driveRight(curl,10);
+		  //rovio_turnRightByDegree(curl,4);
+		  rovio_turnLeftByDegree(curl,4);
+	  }
+
 #endif
 
 	  //updateConsole();
@@ -73,6 +86,7 @@ int main(void)
   //destroyConsole();
   destroyStatusWindow();
   http_interface_destroy();
+  curl_easy_cleanup(curl);
 
   return 0;
 }

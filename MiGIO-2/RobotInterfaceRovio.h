@@ -2,8 +2,10 @@
 #ifdef ROVIO
 #ifndef ROBOT_INTERFACE_R
 #define ROBOT_INTERFACE_R
+#include "curl/curl.h"
 
 static char robotImage[] = "Data/RovioHeader.jpg";
+
 
 
 
@@ -22,6 +24,14 @@ static const char* contNames[] = {" 0)X"," 1)Y"," 2)THETA"};
 void robotReadSensors();
 void robotController();
 void robotSendActuators();
+
+
+CURLcode rovio_turnRightByDegree(CURL *curl, int n);
+CURLcode rovio_forward(CURL *curl, int n,int s);
+CURLcode rovio_driveLeft(CURL *curl, int n);
+CURLcode rovio_driveRight(CURL *curl, int n);
+CURLcode rovio_turnLeftByDegree(CURL *curl, int n);
+
 void robotWait();
 
 
