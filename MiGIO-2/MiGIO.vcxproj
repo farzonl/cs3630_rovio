@@ -93,6 +93,7 @@
   <ItemGroup>
     <ClCompile Include="CameraInterface.cpp" />
     <ClCompile Include="CVConsole.cpp" />
+    <ClCompile Include="geoCompute.cpp" />
     <ClCompile Include="HTTPInterface.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="RobotInterface.cpp" />
