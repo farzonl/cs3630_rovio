@@ -7,7 +7,8 @@
 #include <curl/curl.h>
 #include <unistd.h>
 
-#define ROVIO_IP "143.215.110.22" //97.77
+#define ROVIO_IP "143.215.97.77"
+//97.77 110.22
 
 enum RovioDirection {
     Forward = 1,
