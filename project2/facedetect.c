@@ -153,6 +153,8 @@ static void robot_deplan()
     planned_camera_level = can_undo ? middle : current_height;
     planned_direction = None;
     planned_turn = can_undo ? 2 - planned_turn : center;
+    
+    ticks_to_delay_replan = 0;
 }
 
 // r - the rectangle in the image of the detected face
@@ -187,9 +189,11 @@ static void robot_update_plan(CvRect *r)
     ticks_since_plan = 0;
     ticks_to_delay_replan = 0;
     
-    printf("face width %d (%f%%)\n", r->width, (r->width / (float)imageWidth) * 100.);
-    
+    float face_ratio = r->width / (float)imageWidth;
+        
     //printf("left %d right %d top %d bottom %d\n", leftmost, rightmost, topmost, bottommost);
+    
+    //printf("face ratio %f\n", face_ratio);
     
     if (topmost == high && topmost == bottommost) {
         // printf(", look up\n");
@@ -203,7 +207,7 @@ static void robot_update_plan(CvRect *r)
         // face is low down - lower camera one level
         planned_camera_level = planned_camera_level - 1;
         if (planned_camera_level < 0) planned_camera_level = 0;
-        ticks_to_delay_replan += 2;
+        ticks_to_delay_replan += 4;
         num_deplanned_undoes = 2;
     } else {
         // face is centered - raise camera to mid level
@@ -216,20 +220,23 @@ static void robot_update_plan(CvRect *r)
     if (leftmost == left && leftmost == rightmost) {
         // far left
         planned_turn = left;
-        planned_direction = Left;
+        planned_direction = face_ratio < .3 ? LeftForward : Left;
         ticks_before_replan = 2;
-        ticks_to_delay_replan += 2;
+        ticks_to_delay_replan += 4;
         num_deplanned_undoes = 2;
     } else if (leftmost == right && leftmost == rightmost) {
         // far right
         planned_turn = right;
-        planned_direction = Right;
+        planned_direction = face_ratio < .3 ? RightForward : Right;
         ticks_before_replan = 2;
-        ticks_to_delay_replan += 2;
+        ticks_to_delay_replan += 4;
         num_deplanned_undoes = 2;
     } else if (leftmost == left && rightmost == right) {
         // probably doesn't happen
-        robot_deplan();
+        planned_direction = None;
+        ticks_before_replan = 0;
+        ticks_to_delay_replan = 0;
+        num_deplanned_undoes = 0;
     } else if (leftmost == center || rightmost == center) {
         // centered
         float center_diff = fabs(((r->x + (r->width/2.)) / (imageWidth)) - .5);
@@ -238,11 +245,12 @@ static void robot_update_plan(CvRect *r)
         // otherwise, maybe fine-adjust (by moving sideways or diagonal) if that doesn't cause the face center to just shift sides
         if (leftmost == rightmost || center_diff < (1/3.)) {
             planned_direction = Forward;
-            ticks_before_replan = 5;
+            ticks_before_replan = 10;
+            ticks_to_delay_replan += 4;
         } else {
             planned_direction = (leftmost == left) ? LeftForward : RightForward;
-            ticks_before_replan = 3;
-            ticks_to_delay_replan += 2;
+            ticks_before_replan = 5;
+            ticks_to_delay_replan += 4;
         }
     }
 }
@@ -288,6 +296,7 @@ int main(int argc, char *argv[])
 #endif
     
     gCURL = curl_easy_init();
+    curl_easy_setopt(gCURL, CURLOPT_WRITEDATA, stderr);
     
     cvNamedWindow("capturew", 1);
     
