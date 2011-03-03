@@ -270,6 +270,21 @@ static void robot_execute_plan()
     ticks_since_plan++;
 }
 
+static int detect_object(IplImage *frame, CvHaarClassifierCascade *cascade, CvMemStorage *storage, CvRect *r)
+{
+    CvSeq *faces = cvHaarDetectObjects(frame, cascade, storage, 1.1, 2, CV_HAAR_DO_CANNY_PRUNING, cvSize(20,20), cvSize(0,0));
+    
+    if (faces->total) {
+        *r = *(CvRect*)cvGetSeqElem(faces, 1);
+        return 1;
+    }
+    
+    // blob detection goes here
+    
+    // failure
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
     if (argc < 2) {
@@ -318,29 +333,25 @@ int main(int argc, char *argv[])
         cvCopy(frame, frame2, 0);
         cvClearMemStorage(storage);
         
-        CvSeq *faces = cvHaarDetectObjects(frame2, cascade, storage, 1.1, 2, CV_HAAR_DO_CANNY_PRUNING, cvSize(20,20), cvSize(0,0));
+        CvRect r;
         
-        //printf("faces: %d\n", faces->total);
-        
-        if (faces->total) {
-            CvRect* r = cvGetSeqElem(faces, 1);
-            
+        if (detect_object(frame2, cascade, storage, &r)) {
             // decision making
-            robot_update_plan(r);
+            robot_update_plan(&r);
             
             // drawing
             CvPoint pt1, pt2;
             
-            pt1.x = r->x;
-            pt2.x = r->x + r->width;
-            pt1.y = r->y;
-            pt2.y = r->y + r->height;
+            pt1.x = r.x;
+            pt2.x = r.x + r.width;
+            pt1.y = r.y;
+            pt2.y = r.y + r.height;
             
-            cvRectangle(frame2, pt1, pt2, CV_RGB(255,0,0), 3, 8, 0);
+            cvRectangle(frame2, pt1, pt2, CV_RGB(255,0,0), 3, 8, 0);            
         } else {
             robot_update_plan(NULL);
         }
-        
+
         robot_execute_plan();
 
         cvShowImage("capturew", frame2);
