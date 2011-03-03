@@ -6,11 +6,17 @@
 static int imageWidth, imageHeight;
 static CURL *gCURL;
 
-#define ROVIO_IP "143.215.97.77"
+#define ROVIO_IP "143.215.110.22"
+#define ROVIO_CAM 1
 
 static CvCapture *create_capture_from_localcam()
 {
     return cvCaptureFromCAM(-1);
+}
+
+static CvCapture *create_capture_from_rovio()
+{
+    return cvCaptureFromFile("http://"ROVIO_IP"/Jpeg/CamImg/1.jpg");
 }
 
 typedef enum horizontal_class {
@@ -36,6 +42,8 @@ typedef enum RovioDirection {
     LeftBackward,
     RightBackward
 } RovioDirection;
+
+static vertical_class current_height = middle;
 
 static CURLcode rovio_drive(CURL *curl, int n, RovioDirection direction)
 {
@@ -103,6 +111,8 @@ static CURLcode rovio_camera_height(CURL *curl, vertical_class height)
     
     //puts(buf);
     
+    current_height = height;
+    
     curl_easy_setopt(curl, CURLOPT_URL, buf);
     res = curl_easy_perform(curl);
     return res;
@@ -129,17 +139,20 @@ static vertical_class vert_class(int h)
     return middle;
 }
 
-static int ticks_since_plan = 0, ticks_before_replan = 0; // boredom timer
+static int ticks_since_plan = 0, ticks_before_replan = 0, ticks_to_delay_replan = 0; // boredom timer
+static int num_deplanned_undoes = 0;
 static vertical_class planned_camera_level = middle;
 static RovioDirection planned_direction = None;
 static horizontal_class planned_turn = center;
 
 static void robot_deplan()
 {
+    int can_undo = num_deplanned_undoes-- > 0;
     ticks_since_plan = 0;
-    planned_camera_level = middle;
+    
+    planned_camera_level = can_undo ? middle : current_height;
     planned_direction = None;
-    planned_turn = center;
+    planned_turn = can_undo ? 2 - planned_turn : center;
 }
 
 // r - the rectangle in the image of the detected face
@@ -160,6 +173,8 @@ static void robot_update_plan(CvRect *r)
     
     if (!r) return;
     
+    if (ticks_to_delay_replan--) return;
+    
     horizontal_class leftmost, rightmost;
     vertical_class   bottommost, topmost;
     
@@ -170,17 +185,24 @@ static void robot_update_plan(CvRect *r)
     bottommost= vert_class(r->y + r->height);
     
     ticks_since_plan = 0;
+    ticks_to_delay_replan = 0;
     
     //printf("left %d right %d top %d bottom %d\n", leftmost, rightmost, topmost, bottommost);
     
     if (topmost == high && topmost == bottommost) {
         // printf(", look up\n");
         // face is high up - raise camera one level, or back up the robot
-        planned_camera_level = high;
+        planned_camera_level = planned_camera_level + 1;
+        if (planned_camera_level > 2) planned_camera_level = 2;
+        ticks_to_delay_replan += 4;
+        num_deplanned_undoes = 2;
     } else if (topmost == low && topmost == bottommost) {
         // printf(", look down\n");
         // face is low down - lower camera one level
-        planned_camera_level = low;
+        planned_camera_level = planned_camera_level - 1;
+        if (planned_camera_level < 0) planned_camera_level = 0;
+        ticks_to_delay_replan += 2;
+        num_deplanned_undoes = 2;
     } else {
         // face is centered - raise camera to mid level
         planned_camera_level = middle;
@@ -192,25 +214,33 @@ static void robot_update_plan(CvRect *r)
     if (leftmost == left && leftmost == rightmost) {
         // far left
         planned_turn = left;
+        planned_direction = Left;
         ticks_before_replan = 2;
+        ticks_to_delay_replan += 2;
+        num_deplanned_undoes = 2;
     } else if (leftmost == right && leftmost == rightmost) {
         // far right
         planned_turn = right;
+        planned_direction = Right;
         ticks_before_replan = 2;
+        ticks_to_delay_replan += 2;
+        num_deplanned_undoes = 2;
     } else if (leftmost == left && rightmost == right) {
         // probably doesn't happen
         robot_deplan();
     } else if (leftmost == center || rightmost == center) {
         // centered
+        float center_diff = fabs(((r->x + (r->width/2.)) / (imageWidth)) - .5);
         
         // if leftmost != rightmost, maybe turn
         // otherwise, maybe fine-adjust (by moving sideways or diagonal) if that doesn't cause the face center to just shift sides
-        if (leftmost == rightmost) {
+        if (leftmost == rightmost || center_diff < (1/3.)) {
             planned_direction = Forward;
-            ticks_before_replan = 20;
+            ticks_before_replan = 5;
         } else {
             planned_direction = (leftmost == left) ? LeftForward : RightForward;
-            ticks_before_replan = 5;
+            ticks_before_replan = 3;
+            ticks_to_delay_replan += 2;
         }
     }
 }
@@ -221,9 +251,11 @@ static void robot_execute_plan()
     if (ticks_before_replan == ticks_since_plan)
         robot_deplan();
     
+    printf("level %d turn %d direction %d\n", planned_camera_level, planned_turn, planned_direction);
+    
     rovio_camera_height(gCURL, planned_camera_level);
     rovio_drive(gCURL, 5, planned_direction);
-    rovio_turn(gCURL, planned_turn, 3); 
+    rovio_turn(gCURL, planned_turn, 1); 
     
     ticks_since_plan++;
 }
@@ -247,7 +279,7 @@ int main(int argc, char *argv[])
         return 1;
     
     storage = cvCreateMemStorage(0);
-#if 1
+#if !ROVIO_CAM
     capture = create_capture_from_localcam();
 #else
     // rovio cam
@@ -258,6 +290,10 @@ int main(int argc, char *argv[])
     cvNamedWindow("capturew", 1);
     
     while (1) {
+#if ROVIO_CAM
+        cvReleaseCapture(&capture);
+        capture = create_capture_from_rovio();
+#endif
         if (!cvGrabFrame(capture)) break;
         frame = cvRetrieveFrame(capture, 0);
         if (!frame) break;
@@ -298,7 +334,7 @@ int main(int argc, char *argv[])
 
         cvShowImage("capturew", frame2);
         //cvReleaseImage(&frame);
-        cvWaitKey(1);
+        cvWaitKey(67); // 1/15 sec
     }
         
     return 0;
