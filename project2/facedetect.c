@@ -187,6 +187,8 @@ static void robot_update_plan(CvRect *r)
     ticks_since_plan = 0;
     ticks_to_delay_replan = 0;
     
+    printf("face width %d (%f%%)\n", r->width, (r->width / (float)imageWidth) * 100.);
+    
     //printf("left %d right %d top %d bottom %d\n", leftmost, rightmost, topmost, bottommost);
     
     if (topmost == high && topmost == bottommost) {
@@ -251,7 +253,7 @@ static void robot_execute_plan()
     if (ticks_before_replan == ticks_since_plan)
         robot_deplan();
     
-    printf("level %d turn %d direction %d\n", planned_camera_level, planned_turn, planned_direction);
+    //printf("level %d turn %d direction %d\n", planned_camera_level, planned_turn, planned_direction);
     
     rovio_camera_height(gCURL, planned_camera_level);
     rovio_drive(gCURL, 5, planned_direction);
