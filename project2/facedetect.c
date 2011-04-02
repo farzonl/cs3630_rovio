@@ -8,7 +8,7 @@
 static int imageWidth, imageHeight;
 static CURL *gCURL;
 
-#define ROVIO_IP "143.215.110.22"
+#define ROVIO_IP "10.0.1.24"
 #define ROVIO_CAM 1
 
 static CvCapture *create_capture_from_localcam()
@@ -152,7 +152,7 @@ static void robot_deplan()
     
     planned_camera_level = can_undo ? middle : current_height;
     planned_direction = None;
-    planned_turn = can_undo ? (horizontal_class)(2 - planned_turn) : _left;
+    planned_turn = can_undo ? (horizontal_class)(2 - planned_turn) : center;
     
     ticks_to_delay_replan = 0;
 
@@ -326,6 +326,8 @@ static void possible_rect(CvRect r, int kind)
     if (last_kind == -1 && best_kind != -1) return;
     if (best_kind != -1 && (r.x*r.y <= 30)) return;
     int score = rect_distance(r, last_rect) + ((r.x*r.y)-(last_rect.x*last_rect.y));
+    // FIXME: turning the robot makes distance invalid. driving the robot forward makes area invalid.
+    // so this isn't a great metric
     if (best_kind == -1 || score < best_score) {
         best_rect = r;
         best_kind = kind;
@@ -388,7 +390,7 @@ static int detect_object(IplImage *frame, CvHaarClassifierCascade *cascade, CvMe
             int dist = sqrtf((lh-h)*(lh-h) + (ls-s)*(ls-s) + (lv-v)*(lv-v));
             uint8_t diff = -clip8(dist);
             
-			image_at_8(timage, x, y) = (diff > 210) ? 255 : 0;
+			image_at_8(timage, x, y) = (diff > 200) ? 255 : 0;
         }
     }
     
@@ -483,7 +485,7 @@ int main(int argc, char *argv[])
         imageHeight = frame->height;
         
         if (!filtered) filtered = copy_image_24bit(frame);
-        cvSmooth(frame, filtered, CV_BILATERAL, 5, 5, 50, 30);
+        cvSmooth(frame, filtered, CV_BILATERAL, 5, 5, 40, 30);
         cvClearMemStorage(storage);
         
         CvRect r;
