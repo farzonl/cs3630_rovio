@@ -22,6 +22,7 @@
  */
 
 CvMemStorage *gStorage = NULL;
+static std::vector<CvBox2D> obstacleboxes;
 
 static IplImage *same_size_image_8bit(IplImage *frame)
 {
@@ -37,8 +38,7 @@ static void draw_rect(IplImage *frame, CvRect r, int color)
         CV_RGB(0, 0, 255), // blob blue
         CV_RGB(255, 255, 255), // chosen white
     };
-    
-    
+        
     pt1.x = r.x;
     pt2.x = r.x + r.width;
     pt1.y = r.y;
@@ -74,14 +74,19 @@ static IplImage *get_graphed_image()
     for (int i = 0; i < blobs.GetNumBlobs(); i++)
     {
         CBlob blob = blobs.GetBlob(i);
-        CvRect fr;
-        fr.x      = blob.MinX();
-        fr.width  = blob.MaxX() - fr.x;
-        fr.y      = blob.MinY();
-        fr.height = blob.MaxY() - fr.y;
+        CvBox2D box = blob.GetEllipse();
+        CvPoint2D32f pt[4];
         
         blob.FillBlob(obstacles, CV_RGB(0,255,0));
-        draw_rect(obstacles, fr, 1);
+        printf("blob %d has %d edges\n", i, blob.edges->total);
+        
+        cvBoxPoints(box, pt);
+        obstacleboxes.push_back(box);
+        
+        for (int j = 0; j < 4; j++) {
+            cvLine(obstacles, cvPointFrom32f(pt[j]), cvPointFrom32f(pt[(j+1)%4]), CV_RGB(0, 0, 255));
+        }
+        //draw_rect(obstacles, fr, 1);
     }
     
     return obstacles;
@@ -96,6 +101,8 @@ int main(int argc, char *argv[])
     
     cvNamedWindow("graphedw", 1);
     cvShowImage("graphedw", graphed_image);
+    
+    
     
     while (1) {
         cvWaitKey(2000);
