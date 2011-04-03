@@ -23,6 +23,10 @@
 
 CvMemStorage *gStorage = NULL;
 static std::vector<CvBox2D> obstacleboxes;
+static VisiLibity::Environment *visibility;
+
+static int robot_x = 100, robot_y = 100;
+static int goal_x  = 700, goal_y = 500;
 
 static IplImage *same_size_image_8bit(IplImage *frame)
 {
@@ -49,9 +53,26 @@ static void draw_rect(IplImage *frame, CvRect r, int color)
     cvRectangle(frame, pt1, pt2, colors[color], 3, 8, 0);
 }
 
+static void draw_point(IplImage *frame, int x, int y, int color)
+{
+    // drawing
+    CvPoint pt1, pt2;
+    const CvScalar colors[] = {
+        CV_RGB(255, 0, 0), // face red
+        CV_RGB(0, 0, 255), // chosen white
+    };
+    
+    pt1.x = x - 5;
+    pt2.x = x + 5;
+    pt1.y = y - 5;
+    pt2.y = y + 5;
+        
+    cvRectangle(frame, pt1, pt2, colors[color], 3, 8, 0);
+}
+
 // returns input image (obstacled-highlighted)
 // with the visibility graph drawn on top
-static IplImage *get_graphed_image()
+static IplImage *get_obstacle_image()
 {
     CvCapture *filecapture = cvCaptureFromFile("trace55.jpg");
     IplImage *obstacles;
@@ -77,8 +98,8 @@ static IplImage *get_graphed_image()
         CvBox2D box = blob.GetEllipse();
         CvPoint2D32f pt[4];
         
-        blob.FillBlob(obstacles, CV_RGB(0,255,0));
-        printf("blob %d has %d edges\n", i, blob.edges->total);
+        //blob.FillBlob(obstacles, CV_RGB(0,255,0));
+        //printf("blob %d has %d edges\n", i, blob.edges->total);
         
         cvBoxPoints(box, pt);
         obstacleboxes.push_back(box);
@@ -86,23 +107,153 @@ static IplImage *get_graphed_image()
         for (int j = 0; j < 4; j++) {
             cvLine(obstacles, cvPointFrom32f(pt[j]), cvPointFrom32f(pt[(j+1)%4]), CV_RGB(0, 0, 255));
         }
-        //draw_rect(obstacles, fr, 1);
     }
+    
+    draw_point(obstacles, robot_x, robot_y, 0);
+    draw_point(obstacles, goal_x, goal_y, 1);
     
     return obstacles;
 }
 
+static void add_rect(int x, int y)
+{
+    using namespace VisiLibity;
+
+    Point pp[4];
+    Point p1(x-1, y-1), p2(x+1, y+1);
+    
+    pp[0] = p1;
+    pp[1] = p1;
+    pp[2] = p2;
+    pp[3] = p2;
+    
+    pp[1].set_x(p2.x());
+    pp[3].set_x(p1.x());
+    
+    std::vector<Point> pv(pp, pp+4);
+    Polygon hole(pv);
+    visibility->add_hole(hole);
+}
+
+static IplImage *get_visibility_image(IplImage *obstacle_image)
+{
+    using namespace VisiLibity;
+
+    {
+        Point rp[4] = {
+            Point(0, 0),
+            Point(obstacle_image->width, 0),
+            Point(obstacle_image->width, obstacle_image->height),
+            Point(0, obstacle_image->height)};
+        std::vector<Point> rpv(rp, rp+4);
+        Polygon boundary(rpv);
+        
+        visibility = new Environment(boundary);
+    }
+    
+    for (int i = 0; i < obstacleboxes.size(); i++) {
+        CvBox2D box = obstacleboxes[i];
+        CvPoint2D32f pt[4];
+        Point pp[4];
+        
+        cvBoxPoints(box, pt);
+        
+        for (int j = 0; j < 4; j++) {
+            pp[j] = Point(pt[j].x, pt[j].y);
+        }
+
+        std::vector<Point> pv(pp, pp+4);
+        Polygon hole(pv);
+        visibility->add_hole(hole);
+    }
+    
+    //add_rect(robot_x, robot_y);
+    //add_rect(goal_x, goal_y);
+    
+    visibility->enforce_standard_form();
+    
+   // printf("vis valid %d area %f dia %f\n", visibility->is_valid(), visibility->area(), visibility->diameter());
+    
+    printf("drawing visibility graph\n");
+    
+    IplImage *visibility_image = cvCloneImage(obstacle_image);
+
+    /*
+    {
+        Visibility_Graph graph(*visibility);
+        
+        for (int i = 0; i < graph.n(); i++) {
+            Point &p1 = (*visibility)(i);
+            for (int j = 0; j < graph.n(); j++) {
+                Point &p2 = (*visibility)(j);
+                if (!graph(i, j)) continue;
+                
+                CvPoint cp1, cp2;
+                cp1.x = p1.x();cp1.y = p1.y();
+                cp2.x = p2.x();cp2.y = p2.y();
+                
+                cvLine(visibility_image, cp1, cp2, CV_RGB(255, 0, 255));
+            }
+        }
+        
+    }
+     */
+    
+    printf("drawing visibility poly of robot\n");
+    
+    Point robotp(robot_x, robot_y);
+    Point goalp(goal_x, goal_y);
+    
+    {
+        Visibility_Polygon rpoly(robotp, *visibility, 5);
+        printf("vpoly area %f dia %f\n", rpoly.area(), rpoly.diameter());
+        
+        for (int i = 0; i < rpoly.n(); i++) {
+            Point p = rpoly[i];
+            Point p1 = rpoly[i+1];
+            CvPoint cp1, cp2;
+            cp1.x = p.x(); cp1.y = p.y();
+            cp2.x = p1.x();cp2.y = p1.y();
+            
+            cvLine(visibility_image, cp1, cp2, CV_RGB(255, 255, 0), 2, 8, 0);
+        }
+    }
+    
+    printf("drawing shortest path");
+    
+    {
+        Polyline path = visibility->shortest_path(robotp, goalp, 5);
+        
+        for (int i = 0; i < (path.size()-1); i++) {
+            Point p = path[i];
+            Point p1 = path[i+1];
+            CvPoint cp1, cp2;
+            cp1.x = p.x(); cp1.y = p.y();
+            cp2.x = p1.x();cp2.y = p1.y();
+            
+            printf("p #%d: x %d y %d -> x %d y %d\n", i, cp1.x, cp1.y, cp2.x, cp2.y);
+            
+            cvLine(visibility_image, cp1, cp2, CV_RGB(255, 255, 255), 4, 8, 0);
+        }
+        
+        printf("path size %d length %d\n", path.size(), path.length());
+    }
+    
+    return visibility_image;
+}
+
 int main(int argc, char *argv[])
 {    
-    IplImage *graphed_image;
+    IplImage *obstacle_image, *visibility_image;
     
     gStorage    = cvCreateMemStorage(0);
-    graphed_image = get_graphed_image();
+    obstacle_image = get_obstacle_image();
     
-    cvNamedWindow("graphedw", 1);
-    cvShowImage("graphedw", graphed_image);
+    cvNamedWindow("visibility", 1);
     
+    visibility_image = get_visibility_image(obstacle_image);
     
+    cvShowImage("visibility", visibility_image);
     
     while (1) {
         cvWaitKey(2000);
