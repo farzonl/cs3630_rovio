@@ -213,4 +213,3 @@ void serialterm_close() {
 }
 
 #endif
-

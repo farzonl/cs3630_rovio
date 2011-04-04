@@ -5,12 +5,11 @@
 #include <cstdlib>
 #include "RobotInterfaceRovio.h"
 #include "HTTPInterface.h"
-#include "curl/curl.h"
 
 
 
 void robotReadSensors(){
-
+	
     float x=0, y=0, theta=0;
     int room = 0;
     int beacon = 0;
@@ -58,8 +57,146 @@ void robotController(){
     
 }
 
+
+void turnLeft(int angle){
+	int numTurns = angle/20;
+	for(int i = 0; i < numTurns; i ++ ){
+	static char buf[1024];
+	
+	sprintf(buf,
+		     "http://" ROVIO_HOST ":" ROVIO_PORT "/rev.cgi?"
+             "Cmd=nav&"
+             "action=18&"
+             "drive=17&"
+             "speed=5d"
+			);
+	http_fetch( buf, NULL );
+	}
+
+}
+void turnRight(int angle){
+	int numTurns = angle/20;
+	for(int i = 0; i < numTurns; i ++ ){
+	static char buf[1024];
+	
+	sprintf(buf,
+		     "http://" ROVIO_HOST ":" ROVIO_PORT "/rev.cgi?"
+             "Cmd=nav&"
+             "action=18&"
+             "drive=18&"
+             "speed=5d"
+			);
+	http_fetch( buf, NULL );
+	}
+
+}
+void forward(){
+	static char buf[1024];
+	
+	sprintf(buf,
+		     "http://" ROVIO_HOST ":" ROVIO_PORT "/rev.cgi?"
+             "Cmd=nav&"
+             "action=18&"
+             "drive=1&"
+             "speed=5d"
+			);
+	http_fetch( buf, NULL );
+	
+}
+void backward(){
+		static char buf[1024];
+	
+	sprintf(buf,
+		     "http://" ROVIO_HOST ":" ROVIO_PORT "/rev.cgi?"
+             "Cmd=nav&"
+             "action=18&"
+             "drive=2&"
+             "speed=5d"
+			);
+	http_fetch( buf, NULL );
+	}
+void slideLeft(){
+		static char buf[1024];
+	
+	sprintf(buf,
+		     "http://" ROVIO_HOST ":" ROVIO_PORT "/rev.cgi?"
+             "Cmd=nav&"
+             "action=18&"
+             "drive=3&"
+             "speed=5d"
+			);
+	http_fetch( buf, NULL );
+	
+}
+void slideRight(){
+		static char buf[1024];
+	
+	sprintf(buf,
+		     "http://" ROVIO_HOST ":" ROVIO_PORT "/rev.cgi?"
+             "Cmd=nav&"
+             "action=18&"
+             "drive=4&"
+             "speed=5d"
+			);
+	http_fetch( buf, NULL );
+	
+}
+void slideUpRight(){
+		static char buf[1024];
+	
+	sprintf(buf,
+		     "http://" ROVIO_HOST ":" ROVIO_PORT "/rev.cgi?"
+             "Cmd=nav&"
+             "action=18&"
+             "drive=8&"
+             "speed=5d"
+			);
+	http_fetch( buf, NULL );
+	
+}
+void slideUpLeft(){
+		static char buf[1024];
+	
+	sprintf(buf,
+		     "http://" ROVIO_HOST ":" ROVIO_PORT "/rev.cgi?"
+             "Cmd=nav&"
+             "action=18&"
+             "drive=7&"
+             "speed=5d"
+			);
+	http_fetch( buf, NULL );
+	
+}
+void slideDownLeft(){
+		static char buf[1024];
+	
+	sprintf(buf,
+		     "http://" ROVIO_HOST ":" ROVIO_PORT "/rev.cgi?"
+             "Cmd=nav&"
+             "action=18&"
+             "drive=9&"
+             "speed=5d"
+			);
+	http_fetch( buf, NULL );
+	
+}
+void slideDownRight(){
+		static char buf[1024];
+	
+	sprintf(buf,
+		     "http://" ROVIO_HOST ":" ROVIO_PORT "/rev.cgi?"
+             "Cmd=nav&"
+             "action=18&"
+             "drive=10&"
+             "speed=5d"
+			);
+	http_fetch( buf, NULL );
+	
+}
+
+
 void robotSendActuators(){
-    static char buf[1024];
+    //static char buf[1024];
 //    sprintf( buf, 
 //            "http://" ROVIO_HOST ":" ROVIO_PORT "/rev.cgi?"
 //             "Cmd=nav&"
@@ -69,56 +206,18 @@ void robotSendActuators(){
 //             actuatorValues[0], actuatorValues[1]
 //             );
     
-	sprintf(buf,
-		     "http://" ROVIO_HOST ":" ROVIO_PORT "/rev.cgi?"
-             "Cmd=nav&"
-             "action=18&"
-             "drive=1&"
-             "speed=5d"
-			);
-	http_fetch( buf, NULL );
+	//sprintf(buf,
+		     //"http://" ROVIO_HOST ":" ROVIO_PORT "/rev.cgi?"
+             //"Cmd=nav&"
+             //"action=18&"
+            // "drive=1&"
+          //   "speed=5d"
+		//	);
+	//http_fetch( buf, NULL );
 
 }
 
-int rovio_drive(CURL *curl, int n, RovioDirection direction)
-{
-    CURLcode res;
-    char buf[1024];
-    int i;
-    
-    if (direction == DirNone) return 0;
-    
-    snprintf(buf, sizeof(buf),
-             "http://admin:admin1@" ROVIO_HOST ":80"
-             "/rev.cgi?Cmd=nav&action=18&drive=%d&speed=3", direction);
-    
-    //puts(buf);
-    
-    for(i = 0; i < n; i++){
-        curl_easy_setopt(curl, CURLOPT_URL, buf);
-        res = curl_easy_perform(curl);
-    }
-    return res;
-}
-
-// direction = Left or Right
-// n = 3 for 45, 7 for 90, technically in increments of 20 degrees
-int rovio_turn(CURL *curl, horizontal_class direction, int n)
-{
-    CURLcode res;
-    char buf[1024];
-    
-    if (direction == center) return 0;
-    
-    snprintf(buf, sizeof(buf),
-             "http://admin:admin1@" ROVIO_HOST ":80"
-             "/rev.cgi?Cmd=nav&action=18&drive=%d&speed=5&angle=%d", direction == _left ? 17 : 18, n);
-    
-    //puts(buf);
-    
-    curl_easy_setopt(curl, CURLOPT_URL, buf);
-    res = curl_easy_perform(curl);
-    return res;
+void robotWait() {
 }
 
 #endif

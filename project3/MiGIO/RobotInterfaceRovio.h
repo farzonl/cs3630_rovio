@@ -2,10 +2,8 @@
 #ifdef ROVIO
 #ifndef ROBOT_INTERFACE_R
 #define ROBOT_INTERFACE_R
-#include "curl/curl.h"
 
 static char robotImage[] = "Data/RovioHeader.jpg";
-
 
 
 
@@ -22,36 +20,18 @@ static int contSensors[] = {0,0,0};
 static const char* contNames[] = {" 0)X"," 1)Y"," 2)THETA"};
 
 void robotReadSensors();
+void turnLeft(int angle);
+void turnRight(int angle);
+void forward();
+void backward();
+void slideLeft();
+void slideRight();
+void slideUpRight();
+void slideUpLeft();
+void slideDownRight();
+void slideDownLeft();
 void robotController();
 void robotSendActuators();
-
-typedef enum horizontal_class {
-    _left = 0,
-    center,
-    _right
-} horizontal_class;
-
-typedef enum vertical_class {
-    low = 0,
-    middle,
-    high
-} vertical_class;
-
-typedef enum RovioDirection {
-    DirNone = 0,
-    DirForward = 1,
-    DirBackward,
-    DirLeft,
-    DirRight,
-    DirLeftForward = 7,
-    DirRightForward,
-    DirLeftBackward,
-    DirRightBackward
-} RovioDirection;
-
-int rovio_drive(CURL *curl, int n, RovioDirection direction);
-int rovio_turn(CURL *curl, horizontal_class direction, int n);
-
 void robotWait();
 
 

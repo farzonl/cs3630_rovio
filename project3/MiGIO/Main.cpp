@@ -12,7 +12,7 @@
 //--------------------------------------------------------------------
 
 #include <cv.h>
-#include "curl/curl.h"
+#include <curl/curl.h>
 #include <cxcore.h>
 #include <highgui.h>
 #include <iostream>
@@ -36,58 +36,43 @@ using namespace std;
 int main(void)
 {
   http_interface_init();
-  CURL *curl;
-  curl = curl_easy_init();
-  
 
   initCameras();
 #ifdef _WIN32
   //_beginthread(cameraThread,0,(void*)0);
 #else
-  pthread_t thread;
-  pthread_create(&thread, NULL, &cameraThread, NULL);
+ // pthread_t thread;
+ // pthread_create(&thread, NULL, &cameraThread, NULL);
 #endif
 
-  initConsole();
-  initStatusWindow();
+  //initConsole();
+  //initStatusWindow();
 
-
-#ifdef USE_CONTROLLER
-	  robotReadSensors();  // Blank functions
-	  robotController();
+ #ifdef USE_CONTROLLER
+//	  robotReadSensors();  // Blank functions
+//	  robotController();
 #endif
 
   while(true){
 	  key = cvWaitKey(30); // Really a sleep with input
 	  if(key == 'q') break;
 
-	  /*
 #ifdef USE_CAMERA
 	  processCamera(); // Blank function
 #endif
-	  */
 
 #ifdef USE_CONTROLLER
-	//robotSendActuators();
-	  if(curl) {
-		   //rovio_forward(curl, 18,5);
-		  //rovio_driveLeft(curl,10); 
-		  //rovio_driveRight(curl,10);
-		  //rovio_turnRightByDegree(curl,4);
-		  //rovio_turnLeftByDegree(curl,4);
-	  }
-
+//	  robotSendActuators();
 #endif
 
 	  //updateConsole();
-	  updateStatusWindow();
+	//  updateStatusWindow();
   }
 
-  //robotWait();
+  robotWait();
   //destroyConsole();
   destroyStatusWindow();
   http_interface_destroy();
-  curl_easy_cleanup(curl);
 
   return 0;
 }

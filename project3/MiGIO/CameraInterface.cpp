@@ -14,12 +14,11 @@
 #endif
 using namespace std;
 
-IplImage* img;
+IplImage* img = NULL;
 int numCameras=0;
-IplImage* images[20];
-IplImage* background;
-IplImage* obstacles;
-IplImage* ObstacleBackground;
+IplImage* background = NULL;
+IplImage* obstacles = NULL;
+IplImage* ObstacleBackground = NULL;
 char cameraName[20][1000];
 char cameraURL[20][50000];
 IplImage* frame=0;
@@ -28,7 +27,7 @@ std::vector<CvPoint> robotPos;
 int cornersReached = 0;
 CvPoint realTopRight, realTopLeft, realBottomLeft, realBottomRight, robotPoint;
 CvPoint offset, origin;
-int imageCount =0;
+int imageCount = 0;
 int localCount = 0;
 CvPoint midFront;
 CvPoint midBack;
@@ -39,48 +38,38 @@ int first = 1;
 
 void setBackground(){
 	int key;
-	IplImage* img;
+	IplImage* img = NULL;
     
 	while(1){
         key = cvWaitKey(30);
-        char cname[100];
-        sprintf(cname, "Data/Camera0.jpg");
-        sprintf(cameraName[numCameras], "Data/Camera0.jpg");
-        http_fetch(cameraURL[0],cname);
-        //	cvReleaseImage(&images[0]);
-        img=cvLoadImage(cname);
-        cvShowImage("background" , img);
+        http_fetch(cameraURL[0],"Data/Camera0.jpg");
+        img=cvLoadImage("Data/Camera0.jpg");
+        cvShowImage("background", img);
         if(key == '1')
             break;
+        cvReleaseImage(&img);
 	}
 	cvSmooth(img, img, CV_GAUSSIAN);
 	background = cvCloneImage(img);
-	//cvReleaseImage( &images[0]);
+	cvReleaseImage(&img);
 }
 
 void setObstacleBackground(){
     int key, backr, backg, backb;
+    IplImage* img = NULL;
+
 	while(1){
         key = cvWaitKey(30);
-        char cname[100];
-        sprintf(cname, "Data/Camera0.jpg");
-        sprintf(cameraName[numCameras], "Data/Camera0.jpg");
-        http_fetch(cameraURL[0],cname);
-        //	cvReleaseImage(&images[0]);
-        images[0]=cvLoadImage(cname);
-        cvShowImage("background with obstacles" , images[0]);
+        http_fetch(cameraURL[0],"Data/Camera0.jpg");
+        img=cvLoadImage("Data/Camera0.jpg");
+        cvShowImage("background with obstacles" , img);
         if(key == '2')
             break;
+		cvReleaseImage(&img);
 	}
-    IplImage* img;
     
-    //	    cvSmooth(img, img, CV_GAUSSIAN); 
-    
-	img = images[0];
 	cvSmooth(img, img, CV_GAUSSIAN);
 	ObstacleBackground = cvCloneImage(img);
-	//cvCopyImage(img, ObstacleBackground);
-	//cvReleaseImage( &images[0]);
     
 	for(int i = 0; i < img->height; i++) {
 		for(int j = 0; j < img->width; j++) {
@@ -103,10 +92,10 @@ void setObstacleBackground(){
 			}
 		}
 	}
-    //	cvShowImage("obstacles", img);
+
 	obstacles = cvCloneImage(img);
 	cvShowImage("obstacles", obstacles);
-    
+	cvReleaseImage(&img);
 }
 
 int HSV_filter1(int h, int s, int v, int threshold) {
@@ -114,8 +103,8 @@ int HSV_filter1(int h, int s, int v, int threshold) {
     //	int FilteredColor[3] = {200, 250, 10}; // This one is Orange HSV
 	int FilteredColor[3] = {200, 20,200}; //this works for pink, but not white.
 	int diff =  (FilteredColor[0]-h)*(FilteredColor[0]-h) +
-    (FilteredColor[1]-s)*(FilteredColor[1]-s) + 
-    (FilteredColor[2]-v)*(FilteredColor[2]-v);
+                (FilteredColor[1]-s)*(FilteredColor[1]-s) + 
+                (FilteredColor[2]-v)*(FilteredColor[2]-v);
 	
 	if(diff < threshold) return abs(diff-threshold); /** If here, it has passed! */
 	return 0; /** With 0 this is discarded */
@@ -125,26 +114,22 @@ int RGB_filter1(int r, int g, int b, int threshold){
 	//int FilteredColor[3] = {190, 190, 75}; //the RGB values for bright yellow.
 	int FilteredColor[3] = {10, 110, 60};//the filter for green
 	int diff = (FilteredColor[0] - r)*(FilteredColor[0]-r)+
-    (FilteredColor[1] - g)*(FilteredColor[1] - g)+
-    (FilteredColor[2] - b)*(FilteredColor[2] - b);
-	//printf("out");
+                (FilteredColor[1] - g)*(FilteredColor[1] - g)+
+                (FilteredColor[2] - b)*(FilteredColor[2] - b);
+
 	if(diff < threshold) return abs(diff - threshold);
 	return 0;
 }
 
 int RGB_filter2(int r, int g, int b, int threshold){
 	int FilteredColor[3] = {40, 60, 160}; //the RGB values for the blue felt.
-	//if((r > 150)&&(g > 150) && (b > 150) && ( b > 175) && ( b > r + 20) && ( b > g +40)){
-	//	return 1;
-	//}
+
 	int diff = (FilteredColor[0] - r)*(FilteredColor[0]-r)+
-    (FilteredColor[1] - g)*(FilteredColor[1] - g)+
-    (FilteredColor[2] - b)*(FilteredColor[2] - b);
-	//printf("out");
+                (FilteredColor[1] - g)*(FilteredColor[1] - g)+
+                (FilteredColor[2] - b)*(FilteredColor[2] - b);
+
 	if(diff < threshold){
-		//printf("passed");
 		return abs(diff - threshold);
-		
 	}
 	return 0;
 }
@@ -153,16 +138,14 @@ int RGB_filter3(int r, int g, int b, int threshold){
 	//int FilteredColor[3] = {240, 70, 120}; //the RGB values for teh apple.
 	int FilteredColor[3] = {255, 250, 240}; // the RGB values for teh lemon
 	int diff = (FilteredColor[0] - r)*(FilteredColor[0]-r)+
-    (FilteredColor[1] - g)*(FilteredColor[1] - g)+
-    (FilteredColor[2] - b)*(FilteredColor[2] - b);
-	//printf("out");
+                (FilteredColor[1] - g)*(FilteredColor[1] - g)+
+                (FilteredColor[2] - b)*(FilteredColor[2] - b);
+
 	if(diff < threshold){
-        //		printf("passed");
 		return abs(diff - threshold);
 	}
 	return 0;
 }
-
 
 void processCamera(){
 	IplImage* input;
@@ -182,14 +165,10 @@ void processCamera(){
         setBackground();
         setObstacleBackground();
 	}
-	char cname[100];
-	sprintf(cname, "Data/Camera0.jpg");
-	sprintf(cameraName[numCameras], "Data/Camera0.jpg");
-	http_fetch(cameraURL[0],cname);
+	http_fetch(cameraURL[0],"Data/Camera0.jpg");
     //	cvReleaseImage(&images[0]);
-	images[0]=cvLoadImage(cname);
-	cvShowImage(cameraName[0], images[0]);
-	input = images[0];
+	input=cvLoadImage("Data/Camera0.jpg");
+	//cvShowImage(cameraName[0], input);
     
 	img = cvCloneImage(input);
 	//hsv_img = cvCloneImage(img);
@@ -201,7 +180,7 @@ void processCamera(){
 	cvZero(rob);
 	cvZero(fruit);
     // Smooth input image using a Gaussian filter, assign HSV, BW image
-    cvSmooth(input, img, CV_GAUSSIAN); 
+    cvSmooth(img, img, CV_GAUSSIAN); 
     
 	for(int i = 0; i < img->height; i ++){
 		for(int j = 0; j < img->width; j++){
@@ -249,23 +228,20 @@ void processCamera(){
     blobs = CBlobResult(i1, NULL, 0, true);
     fruitBlob = CBlobResult(fruit, NULL, 0, true);
     //cvReleaseImage(&i1); 
-    fruitBlob.Filter(fruitBlob, B_INCLUDE, CBlobGetArea(), B_GREATER, 10);
+    fruitBlob.Filter(fruitBlob, B_INCLUDE, CBlobGetArea(), B_GREATER, 30);
     fruitBlob.Filter(fruitBlob, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
+	//fruitBlob.PrintBlobs("/dev/stdout");
+
     blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 50);
     blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
     robBlobs.Filter(robBlobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 20);
-    //robBlobs.Filter(robBlobs, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
-    //blobs.GetNthBlob(CBlobGetArea(), blobs.GetNumBlobs()-1, blobArea); // example
-    //printf("The number of blobs is: %d \n", blobs.GetNumBlobs());
+
     for (int i = 1; i < blobs.GetNumBlobs(); i++ )
     {
-        //printf("blobbled");
         blobArea = blobs.GetBlob(i);
         CvBox2D BlobEllipse = blobArea.GetEllipse();
         CvPoint centrum = cvPoint(BlobEllipse.center.x, BlobEllipse.center.y);
-        //	if((centrum.x != 0) &&( centrum.y != 0)){
-        //  path.push_back(centrum);
-        //	}
+
         Right = centrum;
         if(both == 0){
             both = 1;
@@ -274,25 +250,19 @@ void processCamera(){
         { blobArea.FillBlob(input, cvScalar(255, 0, 0));
             cvCircle(input, centrum, 20, CV_RGB(250, 250, 0),2, 1);}
     }
-    //printf("The number of fruit blobs is: %d \n", fruitBlob.GetNumBlobs());
     
     for (int i = 1; i < fruitBlob.GetNumBlobs(); i++ )
     {
-        //printf("blobbled");
         fruitBlobArea = fruitBlob.GetBlob(i);
         CvBox2D BlobEllipse = fruitBlobArea.GetEllipse();
         CvPoint centrum = cvPoint(BlobEllipse.center.x, BlobEllipse.center.y);
-        //if((centrum.x != 0) &&( centrum.y != 0)){
-        // path.push_back(centrum);
-        //}
+
         target = centrum;
         if(fruitBlobArea.Area() > 10)
         { fruitBlobArea.FillBlob(input, cvScalar(255, 0, 250));
             cvCircle(input, centrum, 20, CV_RGB(250, 0, 250),2, 1);}
     }
-    
-    //printf("The number of robot blobs is: %d \n", robBlobs.GetNumBlobs());
-    
+        
     robotPos.clear();
     for (int i = 1; i < robBlobs.GetNumBlobs(); i++ )
     {
@@ -328,20 +298,17 @@ void processCamera(){
         cvCircle(input, target, 20, CV_RGB(0, 0, 0), 2, 1);
         double temp = sqrt((double)(Right.x - Left.x)*(Right.x - Left.x) + (Right.y - Left.y)*(Right.y - Left.y));
         temp = acos((Right.x-Left.x)/temp);
-        temp = (temp/3.14159)*180;
-        //temp = temp + 90;
-        //printf("angle %d ", temp);
+        temp = (temp/M_PI)*180;
+
         if(((Right.y - Left.y) < 0) && ((Right.x-Left.x) > 0)){
-            //printf("ugh");
             temp = 360 -temp;
         }
         else if(((Right.y - Left.y < 0) && ((Right.x - Left.x) < 0))){
-            // printf("oop");
             float rho = 180 - temp;
             temp = temp + 2*rho;
         }
         temp = temp + 90;
-        temp = (int)temp%360;
+        temp = fmod(temp,360);
         if(temp > 180){
             temp = (180 + 360 - temp);
         }
@@ -355,18 +322,15 @@ void processCamera(){
         double fruitAngle = sqrt((double)(target.x - location.x)*(target.x - location.x) +
                                  (target.y - location.y)*(target.y-location.y));
         fruitAngle = acos((target.x - location.x)/fruitAngle);
-        fruitAngle = (fruitAngle/3.14159)*180;
+        fruitAngle = (fruitAngle/M_PI)*180;
         if(((target.y - location.y) > 0) && ((target.x-location.x) > 0)){
-            //printf("ugh");
             fruitAngle = 360 -fruitAngle;
         }
         else if(((target.y - location.y > 0) && ((target.x - location.x) < 0))){
-            //printf("oop");
             float rho = 180 - fruitAngle;
             fruitAngle = fruitAngle + 2*rho;
         }
         
-        //printf("fruit angle: %d", (int)fruitAngle);
         int difference = (fruitAngle - orientation);
         if(difference > 180){
             difference = difference - 360;
@@ -375,13 +339,12 @@ void processCamera(){
             difference = difference + 360;
         }
         CvPoint relativeFruitPos;
-        relativeFruitPos.x = (int)cos((double)((difference/360)*3.14159)) * 8;
-        relativeFruitPos.y = (int)sin((double)((difference/360)*3.14159)) * 8;
+        relativeFruitPos.x = (int)cos((double)((difference/360)*M_PI)) * 8;
+        relativeFruitPos.y = (int)sin((double)((difference/360)*M_PI)) * 8;
         
-        printf("The orientation is: %d \n", difference);
+        //printf("The orientation is: %d \n", difference);
     }
  
-
     blobs.ClearBlobs();
     cvReleaseImage(&img);
 
@@ -389,13 +352,13 @@ void processCamera(){
     cvReleaseImage(&rob);
     robBlobs.ClearBlobs();
     cvReleaseImage(&i1);
+    
     CvScalar cyan = CV_RGB(0, 250,250);
     CvScalar lightGreen = CV_RGB(127,255,0);
     CvScalar purple = CV_RGB(138,43,226);
     
     // here is where we are going to draw in our squares.
     if(path.size() > 0){
-        
         int xdiff, ydiff;
         if(path.size() > 20){
             CvPoint newest, older;
@@ -408,22 +371,20 @@ void processCamera(){
             xdiff = 0;
             ydiff = 0;
         }
-        
         robotPoint = path.back();
         
-        
-        int shapeSize = 100;
+        //int shapeSize = 100;
         for(int i = 0; i < path.size(); i ++){
             cvCircle(input, path.at(i),1, cyan, 2);
         }
     }
  
     cvNamedWindow("Output Image - Blob Demo", 1);
-    if(localCount % 5 ==0){
+    if(localCount % 5 == 0 && 0){
         localCount = 0;
         string imageName;
         std::stringstream out;
-        out << "trace" << imageCount <<".jpg";
+        out << "trace/trace" << imageCount <<".jpg";
         imageName = out.str();
         cvSaveImage(imageName.c_str(), input);
         imageCount= imageCount + 1;
@@ -442,15 +403,17 @@ void initCameras(){
 		sprintf(cname, "Data/Camera%d.jpg", numCameras);
 		sprintf(cameraName[numCameras], "Data/Camera%d.jpg", numCameras);
         
-		cvNamedWindow(cname);
+	/*	cvNamedWindow(cname);
 		http_fetch(cameraURL[numCameras],cname);
 		images[numCameras] = cvLoadImage(cname);
 		cvShowImage(cameraName[numCameras], images[numCameras]);
-        
+        */
 		numCameras++;
 	}
 	infile.close();
 }
+
+IplImage* images[20];
 
 #ifdef _WIN32
 void cameraThread(void *arg)
@@ -463,6 +426,7 @@ void *cameraThread(void *arg)
 			http_fetch(cameraURL[i],cameraName[i]);
 			cvReleaseImage(&images[i]);
 			images[i] = cvLoadImage(cameraName[i]);
+			if (!images[i]) continue;
 			cvShowImage(cameraName[i], images[i]);
 		}
 #ifdef _WIN32
