@@ -25,12 +25,32 @@ void robotReadSensors();
 void robotController();
 void robotSendActuators();
 
+typedef enum horizontal_class {
+    _left = 0,
+    center,
+    _right
+} horizontal_class;
 
-CURLcode rovio_turnRightByDegree(CURL *curl, int n);
-CURLcode rovio_forward(CURL *curl, int n,int s);
-CURLcode rovio_driveLeft(CURL *curl, int n);
-CURLcode rovio_driveRight(CURL *curl, int n);
-CURLcode rovio_turnLeftByDegree(CURL *curl, int n);
+typedef enum vertical_class {
+    low = 0,
+    middle,
+    high
+} vertical_class;
+
+typedef enum RovioDirection {
+    DirNone = 0,
+    DirForward = 1,
+    DirBackward,
+    DirLeft,
+    DirRight,
+    DirLeftForward = 7,
+    DirRightForward,
+    DirLeftBackward,
+    DirRightBackward
+} RovioDirection;
+
+int rovio_drive(CURL *curl, int n, RovioDirection direction);
+int rovio_turn(CURL *curl, horizontal_class direction, int n);
 
 void robotWait();
 

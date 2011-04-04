@@ -12,7 +12,7 @@
 //--------------------------------------------------------------------
 
 #include <cv.h>
-#include "curl\curl.h"
+#include "curl/curl.h"
 #include <cxcore.h>
 #include <highgui.h>
 #include <iostream>
@@ -73,7 +73,7 @@ int main(void)
 		  //rovio_driveLeft(curl,10); 
 		  //rovio_driveRight(curl,10);
 		  //rovio_turnRightByDegree(curl,4);
-		  rovio_turnLeftByDegree(curl,4);
+		  //rovio_turnLeftByDegree(curl,4);
 	  }
 
 #endif
@@ -82,7 +82,7 @@ int main(void)
 	  updateStatusWindow();
   }
 
-  robotWait();
+  //robotWait();
   //destroyConsole();
   destroyStatusWindow();
   http_interface_destroy();

@@ -80,84 +80,45 @@ void robotSendActuators(){
 
 }
 
-
-CURLcode rovio_forward(CURL *curl, int n,int s)
+int rovio_drive(CURL *curl, int n, RovioDirection direction)
 {
     CURLcode res;
+    char buf[1024];
     int i;
+    
+    if (direction == DirNone) return 0;
+    
+    snprintf(buf, sizeof(buf),
+             "http://admin:admin1@" ROVIO_HOST ":80"
+             "/rev.cgi?Cmd=nav&action=18&drive=%d&speed=3", direction);
+    
+    //puts(buf);
+    
     for(i = 0; i < n; i++){
-
-
-        curl_easy_setopt(curl, CURLOPT_URL, 
-                         "http://" ROVIO_HOST ":" ROVIO_PORT
-                         "/rev.cgi?Cmd=nav&action=18&drive=1&speed=%d",s);
+        curl_easy_setopt(curl, CURLOPT_URL, buf);
         res = curl_easy_perform(curl);
     }
     return res;
 }
 
-CURLcode rovio_turnRightByDegree(CURL *curl, int n)
+// direction = Left or Right
+// n = 3 for 45, 7 for 90, technically in increments of 20 degrees
+int rovio_turn(CURL *curl, horizontal_class direction, int n)
 {
-
     CURLcode res;
-    int i;
-    for(i = 0; i < n; i++){
-        curl_easy_setopt(curl, CURLOPT_URL, 
-                         "http://" ROVIO_HOST ":" ROVIO_PORT
-                         "/rev.cgi?Cmd=nav&action=18&drive=18&speed=5");
-        res = curl_easy_perform(curl);
-    }
+    char buf[1024];
+    
+    if (direction == center) return 0;
+    
+    snprintf(buf, sizeof(buf),
+             "http://admin:admin1@" ROVIO_HOST ":80"
+             "/rev.cgi?Cmd=nav&action=18&drive=%d&speed=5&angle=%d", direction == _left ? 17 : 18, n);
+    
+    //puts(buf);
+    
+    curl_easy_setopt(curl, CURLOPT_URL, buf);
+    res = curl_easy_perform(curl);
     return res;
-}
-
-CURLcode rovio_turnLeftByDegree(CURL *curl, int n)
-{
-
-    CURLcode res;
-    int i;
-    for(i = 0; i < n; i++){
-        curl_easy_setopt(curl, CURLOPT_URL, 
-                         "http://" ROVIO_HOST ":" ROVIO_PORT
-                         "/rev.cgi?Cmd=nav&action=18&drive=17&speed=5");
-        res = curl_easy_perform(curl);
-    }
-    return res;
-}
-
-CURLcode rovio_driveLeft(CURL *curl, int n) {
-  
-        CURLcode res;
-	int i;
-  
-	curl_easy_setopt(curl, CURLOPT_URL, 
-                         "http://" ROVIO_HOST ":" ROVIO_PORT
-                         "/rev.cgi?Cmd=nav&action=18&drive=3&speed=5");
-        for( i = 0; i<n; i++)
-            res = curl_easy_perform(curl);
-	
-	return res;
-  
-}
-
-CURLcode rovio_driveRight(CURL *curl, int n) {
-  
-        CURLcode res;
-	int i;
-  
-	curl_easy_setopt(curl, CURLOPT_URL, 
-                         "http://" ROVIO_HOST ":" ROVIO_PORT
-                         "/rev.cgi?Cmd=nav&action=18&drive=4&speed=5");
-        for( i = 0; i<n; i++)
-            res = curl_easy_perform(curl);
-	
-	return res;
-  
-}
-
-
-
-
-void robotWait() {
 }
 
 #endif
