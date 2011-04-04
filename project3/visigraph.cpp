@@ -25,8 +25,8 @@ CvMemStorage *gStorage = NULL;
 static std::vector<CvBox2D> obstacleboxes;
 static VisiLibity::Environment *visibility;
 
-static int robot_x = 100, robot_y = 100;
-static int goal_x  = 700, goal_y = 500;
+static int robot_x = 360, robot_y = 235;
+static int goal_x  = 685, goal_y  = 225;
 
 static IplImage *same_size_image_8bit(IplImage *frame)
 {
@@ -74,7 +74,7 @@ static void draw_point(IplImage *frame, int x, int y, int color)
 // with the visibility graph drawn on top
 static IplImage *get_obstacle_image()
 {
-    CvCapture *filecapture = cvCaptureFromFile("trace55.jpg");
+    CvCapture *filecapture = cvCaptureFromFile("robot_image_obstacles.png");
     IplImage *obstacles;
     
     cvGrabFrame(filecapture);
@@ -86,7 +86,7 @@ static IplImage *get_obstacle_image()
     cvCvtColor(obstacles, grey, CV_BGR2GRAY);
     
     CBlobResult blobs = CBlobResult(grey, NULL, 0, true);
-    blobs.Filter(blobs, B_INCLUDE, CBlobGetMean(), B_GREATER, 10);
+    //blobs.Filter(blobs, B_INCLUDE, CBlobGetMean(), B_GREATER, 10);
     blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 20);
     blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_LESS, 250000);
 
@@ -98,8 +98,25 @@ static IplImage *get_obstacle_image()
         CvBox2D box = blob.GetEllipse();
         CvPoint2D32f pt[4];
         
-        //blob.FillBlob(obstacles, CV_RGB(0,255,0));
-        //printf("blob %d has %d edges\n", i, blob.edges->total);
+        blob.FillBlob(obstacles, CV_RGB(0,255,0));
+        printf("blob %d has %d edges\n", i, blob.edges->total);
+        printf("%d - x %f to %f, y %f to %f\n", i, blob.MinX(), blob.MaxX(), blob.MinY(), blob.MaxY());
+        
+        {
+            CvRect fr;
+            fr.x      = blob.MinX();
+            fr.width  = blob.MaxX() - fr.x;
+            fr.y      = blob.MinY();
+            fr.height = blob.MaxY() - fr.y;
+            
+            if (box.size.width > fr.width)
+                box.size.width = fr.width; // some opencv bug
+            
+            if (box.size.height > fr.height)
+                box.size.height = fr.height;
+                        
+            draw_rect(obstacles, fr, 1);
+        }
         
         cvBoxPoints(box, pt);
         obstacleboxes.push_back(box);
@@ -178,15 +195,19 @@ static IplImage *get_visibility_image(IplImage *obstacle_image)
     
     IplImage *visibility_image = cvCloneImage(obstacle_image);
 
-    /*
+    int nlines = 0, nvertices = 0;
+    
     {
         Visibility_Graph graph(*visibility);
+        nvertices = graph.n();
         
-        for (int i = 0; i < graph.n(); i++) {
+        for (int i = 0; i < nvertices; i++) {
             Point &p1 = (*visibility)(i);
-            for (int j = 0; j < graph.n(); j++) {
+            for (int j = 0; j < nvertices; j++) {
                 Point &p2 = (*visibility)(j);
-                if (!graph(i, j)) continue;
+                if (!graph(i, j) || (j > i && graph(j, i))) continue;
+                
+                nlines++;
                 
                 CvPoint cp1, cp2;
                 cp1.x = p1.x();cp1.y = p1.y();
@@ -197,7 +218,8 @@ static IplImage *get_visibility_image(IplImage *obstacle_image)
         }
         
     }
-     */
+     
+    printf("%d vertices, %d edges in graph\n", nvertices, nlines);
     
     printf("drawing visibility poly of robot\n");
     
@@ -219,7 +241,7 @@ static IplImage *get_visibility_image(IplImage *obstacle_image)
         }
     }
     
-    printf("drawing shortest path");
+    printf("drawing shortest path\n");
     
     {
         Polyline path = visibility->shortest_path(robotp, goalp, 5);
@@ -236,7 +258,7 @@ static IplImage *get_visibility_image(IplImage *obstacle_image)
             cvLine(visibility_image, cp1, cp2, CV_RGB(255, 255, 255), 4, 8, 0);
         }
         
-        printf("path size %d length %d\n", path.size(), path.length());
+        printf("path size %d length %f\n", path.size(), path.length());
     }
     
     return visibility_image;
