@@ -2,39 +2,339 @@
 #include "HTTPInterface.h"
 #include "RobotInterfaceRovio.h"
 
-
-
 #include <stdio.h>
 //#include <tchar.h>
 #include "Blob.h"
 #include "BlobResult.h"
+#include "visilibity.hpp"
+
 #include <fstream>
 #ifndef _WIN32
 #include <unistd.h>
 #endif
 using namespace std;
 
+
+/* 
+ steps
+ 
+ - creation of map
+ <creation of obstacle image goes here from video>
+ 1. load obstacle image from disk (hack)
+ 2. run blob detection on red things
+ 3. create corner image
+ 4. (however this works) mark corners inside blobs, create polygons with that
+ 
+ 5. create visibility environment with empty space = everything not an obstacle
+ 
+ 6. get a graph or something
+ 
+ - motion along map
+ */
+
+CvMemStorage *gStorage = NULL;
+static std::vector<CvBox2D> obstacleboxes;
+static VisiLibity::Environment *visibility;
+
+static std::vector<VisiLibity::Point> path_to_goal;
+
+CvPoint targetPos, robotPos;
+int robotOrientation;
+
+static float angle_towards(int x1, int y1, int x2, int y2)
+{
+    int xv = x2 - x1;
+    int yv = y2 - y1;
+    
+    //printf("xv %d yv %d\n", xv, yv);
+    
+    float res = atan2f(yv, xv);
+    
+    res = (2*M_PI) - res;
+    res = fmodf(res, 2*M_PI);
+    return res;
+}
+
+static void drive_to_point(VisiLibity::Point p)
+{
+    int cur_x = robotPos.x, cur_y = robotPos.y;
+    int next_x = p.x(), next_y = p.y();
+    float angle = angle_towards(cur_x, cur_y, next_x, next_y);
+    
+    printf("drive from %d,%d to %d,%d\n", robotPos.x, robotPos.y, next_x, next_y);
+    printf("change orientation from %f (%f) to %f (%f)\n", robotOrientation, robotOrientation * (180./M_PI)
+           , angle, angle * (180./M_PI));
+    
+    robotPos.x = next_x;
+    robotPos.y = next_y;
+    robotOrientation = angle;
+}
+
+// drives along path_to_goal
+static void drive_to_goal()
+{
+    using namespace VisiLibity;
+    for (int i = 1; i < path_to_goal.size(); i++) {
+        Point p = path_to_goal[i];
+        
+        drive_to_point(p);
+    }
+}
+
+#pragma mark -- camera control ends here
+
+static IplImage *same_size_image_8bit(IplImage *frame)
+{
+    return cvCreateImage(cvSize(frame->width, frame->height), IPL_DEPTH_8U, 1);
+}
+
+static void draw_rect(IplImage *frame, CvRect r, int color)
+{
+    // drawing
+    CvPoint pt1, pt2;
+    const CvScalar colors[] = {
+        CV_RGB(255, 0, 0), // face red
+        CV_RGB(0, 0, 255), // blob blue
+        CV_RGB(255, 255, 255), // chosen white
+    };
+    
+    pt1.x = r.x;
+    pt2.x = r.x + r.width;
+    pt1.y = r.y;
+    pt2.y = r.y + r.height;
+    
+    //printf("rect: x %d y %d w %d h %d\n", r.x, r.y, r.width, r.height);
+    
+    cvRectangle(frame, pt1, pt2, colors[color], 3, 8, 0);
+}
+
+static void draw_point(IplImage *frame, int x, int y, int color)
+{
+    // drawing
+    CvPoint pt1, pt2;
+    const CvScalar colors[] = {
+        CV_RGB(255, 0, 0), // face red
+        CV_RGB(0, 0, 255), // chosen white
+    };
+    
+    pt1.x = x - 5;
+    pt2.x = x + 5;
+    pt1.y = y - 5;
+    pt2.y = y + 5;
+    
+    cvRectangle(frame, pt1, pt2, colors[color], 3, 8, 0);
+}
+
+// returns input image (obstacles highlighted)
+// fills out global variable obstacleboxes
+static IplImage *visibility_mark_obstacle_boxes(IplImage *obstacles)
+{
+    IplImage *grey = same_size_image_8bit(obstacles);
+    
+    cvCvtColor(obstacles, grey, CV_BGR2GRAY);
+    
+    CBlobResult blobs = CBlobResult(grey, NULL, 0, true);
+    blobs.Filter(blobs, B_INCLUDE, CBlobGetMean(), B_GREATER, 10);
+    blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 20);
+    blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_LESS, 250000);
+    
+    blobs.PrintBlobs("/dev/stdout");
+    
+    for (int i = 0; i < blobs.GetNumBlobs(); i++)
+    {
+        CBlob blob = blobs.GetBlob(i);
+        CvBox2D box = blob.GetEllipse();
+        CvPoint2D32f pt[4];
+                
+        {
+            CvRect fr;
+            fr.x      = blob.MinX();
+            fr.width  = blob.MaxX() - fr.x;
+            fr.y      = blob.MinY();
+            fr.height = blob.MaxY() - fr.y;
+            
+            if (box.size.width > fr.width)
+                box.size.width = fr.width; // some opencv bug
+            
+            if (box.size.height > fr.height)
+                box.size.height = fr.height;
+            
+            if (fr.width >= obstacles->width && fr.height >= obstacles->height)
+                continue;
+            
+            draw_rect(obstacles, fr, 1);
+        }
+        
+        blob.FillBlob(obstacles, CV_RGB(0,255,0));
+        printf("blob %d has %d edges\n", i, blob.edges->total);
+        printf("%d - x %f to %f, y %f to %f\n", i, blob.MinX(), blob.MaxX(), blob.MinY(), blob.MaxY());        
+        
+        cvBoxPoints(box, pt);
+        obstacleboxes.push_back(box);
+        
+        for (int j = 0; j < 4; j++) {
+            cvLine(obstacles, cvPointFrom32f(pt[j]), cvPointFrom32f(pt[(j+1)%4]), CV_RGB(0, 0, 255));
+        }
+    }
+        
+    return obstacles;
+}
+
+static VisiLibity::Point move_point_away(VisiLibity::Point p)
+{
+    // find the obstacle whose corner this point is on
+    // then move the point away from its center
+    float cx=0, cy=0;
+    
+    for (int i = 0; i < obstacleboxes.size(); i++) {
+        CvBox2D box = obstacleboxes[i];
+        CvPoint2D32f pt[4];
+        
+        cvBoxPoints(box, pt);
+        
+        for (int j = 0; j < 4; j++) {
+            float px = pt[j].x, py = pt[j].y;
+            
+            if (abs(px - p.x()) < 2. && abs(py - p.y()) < 2.) {
+                cx = box.center.x;
+                cy = box.center.y;
+                goto done;
+            }
+        }
+    }
+    
+    return p;
+    
+done:
+    float cxv = p.x() - cx, cyv = p.y() - cy;
+    float r = sqrtf(cxv * cxv + cyv * cyv);
+    cxv /= r;
+    cyv /= r;
+    
+    cxv *= 35;
+    cyv *= 35;
+    
+    return VisiLibity::Point(p.x() + cxv, p.y() + cyv);
+}
+
+// input - visibility_mark_obstacle_boxes
+// output - visibility graph drawn over image
+// fills out global variable visibility
+static IplImage *visibility_make_visibility_graph(IplImage *obstacle_image)
+{
+    using namespace VisiLibity;
+    
+    {
+        Point rp[4] = {
+            Point(0, 0),
+            Point(obstacle_image->width, 0),
+            Point(obstacle_image->width, obstacle_image->height),
+            Point(0, obstacle_image->height)};
+        std::vector<Point> rpv(rp, rp+4);
+        Polygon boundary(rpv);
+        
+        visibility = new Environment(boundary);
+    }
+    
+    for (int i = 0; i < obstacleboxes.size(); i++) {
+        CvBox2D box = obstacleboxes[i];
+        CvPoint2D32f pt[4];
+        Point pp[4];
+        
+        cvBoxPoints(box, pt);
+        
+        for (int j = 0; j < 4; j++) {
+            pp[j] = Point(pt[j].x, pt[j].y);
+        }
+        
+        std::vector<Point> pv(pp, pp+4);
+        Polygon hole(pv);
+        visibility->add_hole(hole);
+    }
+    
+    visibility->enforce_standard_form();
+    
+    //printf("vis valid %d area %f dia %f\n", visibility->is_valid(), visibility->area(), visibility->diameter());
+    
+    //printf("drawing visibility graph\n");
+    
+    IplImage *visibility_image = cvCloneImage(obstacle_image);
+    
+    int nlines = 0, nvertices = 0;
+    
+    {
+        Visibility_Graph graph(*visibility);
+        nvertices = graph.n();
+        
+        for (int i = 0; i < nvertices; i++) {
+            Point &p1 = (*visibility)(i);
+            for (int j = 0; j < nvertices; j++) {
+                Point &p2 = (*visibility)(j);
+                if (!graph(i, j) || (j > i && graph(j, i))) continue;
+                
+                nlines++;
+                
+                CvPoint cp1, cp2;
+                cp1.x = p1.x();cp1.y = p1.y();
+                cp2.x = p2.x();cp2.y = p2.y();
+                
+                cvLine(visibility_image, cp1, cp2, CV_RGB(255, 0, 255));
+            }
+        }
+        
+    }
+    
+    printf("%d vertices, %d edges in graph\n", nvertices, nlines);
+    
+    return visibility_image;
+}
+
+// input - visibility_make_visibility_graph
+// global variables robotPos.x, robotPos.y, targetPos.x, targetPos.y
+// output - image with path drawn on it
+// global variable path_to_goal
+static IplImage *visibility_find_robot_path(IplImage *visibility_graph_image)
+{
+    using namespace VisiLibity;
+
+    //printf("drawing shortest path\n");
+    Point robotp(robotPos.x, robotPos.y);
+    Point goalp(targetPos.x, targetPos.y);
+    Polyline path = visibility->shortest_path(robotp, goalp, 5);
+    
+    path_to_goal.clear();
+    
+    for (int i = 0; i < path.size(); i++) {
+        Point p = move_point_away(path[i]);
+        path_to_goal.push_back(p);
+    }
+    
+    for (int i = 0; i < (path.size()-1); i++) {
+        Point p  = path_to_goal[i];
+        Point p1 = path_to_goal[i+1];
+        CvPoint cp1, cp2;
+        cp1.x = p.x(); cp1.y = p.y();
+        cp2.x = p1.x();cp2.y = p1.y();
+        
+        printf("p #%d: x %d y %d -> x %d y %d\n", i, cp1.x, cp1.y, cp2.x, cp2.y);
+        
+        cvLine(visibility_graph_image, cp1, cp2, CV_RGB(255, 255, 255), 4, 8, 0);
+    }
+    
+    return visibility_graph_image;
+}
+
 IplImage* img = NULL;
 int numCameras=0;
 IplImage* background = NULL;
-IplImage* obstacles = NULL;
 IplImage* ObstacleBackground = NULL;
+IplImage* visibility_image = NULL;
 char cameraName[20][1000];
 char cameraURL[20][50000];
-IplImage* frame=0;
-std::vector<CvPoint> path;
-std::vector<CvPoint> robotPos;
-int cornersReached = 0;
-CvPoint realTopRight, realTopLeft, realBottomLeft, realBottomRight, robotPoint;
-CvPoint offset, origin;
+
+//std::vector<CvPoint> path;
+//std::vector<CvPoint> robotPos;
 int imageCount = 0;
-int localCount = 0;
-CvPoint midFront;
-CvPoint midBack;
-CvPoint Left, Right;
-int orientation;
-CvPoint target;
-int first = 1;
 
 void setBackground(){
 	int key;
@@ -44,7 +344,7 @@ void setBackground(){
         key = cvWaitKey(30);
         http_fetch(cameraURL[0],"Data/Camera0.jpg");
         img=cvLoadImage("Data/Camera0.jpg");
-        cvShowImage("background", img);
+        cvShowImage("Display", img);
         if(key == '1')
             break;
         cvReleaseImage(&img);
@@ -62,7 +362,7 @@ void setObstacleBackground(){
         key = cvWaitKey(30);
         http_fetch(cameraURL[0],"Data/Camera0.jpg");
         img=cvLoadImage("Data/Camera0.jpg");
-        cvShowImage("background with obstacles" , img);
+        cvShowImage("Display" , img);
         if(key == '2')
             break;
 		cvReleaseImage(&img);
@@ -92,10 +392,11 @@ void setObstacleBackground(){
 			}
 		}
 	}
-
-	obstacles = cvCloneImage(img);
-	cvShowImage("obstacles", obstacles);
-	cvReleaseImage(&img);
+    
+    img = visibility_mark_obstacle_boxes(img);
+    img = visibility_make_visibility_graph(img);
+    
+    visibility_image = img;
 }
 
 int HSV_filter1(int h, int s, int v, int threshold) {
@@ -147,28 +448,22 @@ int RGB_filter3(int r, int g, int b, int threshold){
 	return 0;
 }
 
-void processCamera(){
+// finds robot and fruit
+static int find_objects(){
 	IplImage* input;
     IplImage* img;
     IplImage* i1;
 	IplImage* rob;
 	IplImage* fruit;
-	CBlobResult robBlobs;
-    CvPoint location;
-	CBlobResult fruitBlob;
-	CBlob fruitBlobArea;
-	CBlob robBlobArea;
-    CBlobResult blobs;
-    CBlob blobArea;
-	if(first){
-        first = 0;
-        setBackground();
-        setObstacleBackground();
-	}
+
+    CvPoint Left, Right;
+    
 	http_fetch(cameraURL[0],"Data/Camera0.jpg");
     //	cvReleaseImage(&images[0]);
 	input=cvLoadImage("Data/Camera0.jpg");
 	//cvShowImage(cameraName[0], input);
+    
+    cvDestroyWindow("Display");
     
 	img = cvCloneImage(input);
 	//hsv_img = cvCloneImage(img);
@@ -223,51 +518,55 @@ void processCamera(){
 			}
         }
     }
-    int both = 0;
-    robBlobs = CBlobResult(rob, NULL, 0, true);
-    blobs = CBlobResult(i1, NULL, 0, true);
-    fruitBlob = CBlobResult(fruit, NULL, 0, true);
-    //cvReleaseImage(&i1); 
+    
+    int found_robot=0, found_fruit=0;
+    
+    CBlobResult robBlobs = CBlobResult(rob, NULL, 0, true);
+    CBlobResult blobs = CBlobResult(i1, NULL, 0, true);
+    CBlobResult fruitBlob = CBlobResult(fruit, NULL, 0, true);
+    
     fruitBlob.Filter(fruitBlob, B_INCLUDE, CBlobGetArea(), B_GREATER, 30);
     fruitBlob.Filter(fruitBlob, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
-	//fruitBlob.PrintBlobs("/dev/stdout");
 
     blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 50);
     blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
+    
     robBlobs.Filter(robBlobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 20);
 
+    // find right side of robot
     for (int i = 1; i < blobs.GetNumBlobs(); i++ )
     {
-        blobArea = blobs.GetBlob(i);
+        CBlob blobArea = blobs.GetBlob(i);
         CvBox2D BlobEllipse = blobArea.GetEllipse();
         CvPoint centrum = cvPoint(BlobEllipse.center.x, BlobEllipse.center.y);
 
         Right = centrum;
-        if(both == 0){
-            both = 1;
-        }
+        found_robot = 1;
         if(blobArea.Area() > 10)
         { blobArea.FillBlob(input, cvScalar(255, 0, 0));
             cvCircle(input, centrum, 20, CV_RGB(250, 250, 0),2, 1);}
     }
     
+    // find fruit
     for (int i = 1; i < fruitBlob.GetNumBlobs(); i++ )
     {
-        fruitBlobArea = fruitBlob.GetBlob(i);
+        CBlob fruitBlobArea = fruitBlob.GetBlob(i);
         CvBox2D BlobEllipse = fruitBlobArea.GetEllipse();
         CvPoint centrum = cvPoint(BlobEllipse.center.x, BlobEllipse.center.y);
 
-        target = centrum;
+        targetPos = centrum;
+        found_fruit = 1;
         if(fruitBlobArea.Area() > 10)
         { fruitBlobArea.FillBlob(input, cvScalar(255, 0, 250));
             cvCircle(input, centrum, 20, CV_RGB(250, 0, 250),2, 1);}
     }
         
-    robotPos.clear();
+    //robotPos.clear();
+    //find other side of robot
     for (int i = 1; i < robBlobs.GetNumBlobs(); i++ )
     {
         //printf("blobbled");
-        robBlobArea = robBlobs.GetBlob(i);
+        CBlob robBlobArea = robBlobs.GetBlob(i);
         CvBox2D BlobEllipse = robBlobArea.GetEllipse();
         CvPoint centrum = cvPoint(BlobEllipse.center.x, BlobEllipse.center.y);
         if((centrum.x != 0) &&( centrum.y != 0)){
@@ -283,19 +582,18 @@ void processCamera(){
             //robotPos.push_back(centrum);
         }
         Left = centrum;
-        if(both == 1){
-            both = 2;
-        }
+        if (found_robot==1)
+            found_robot++;
         
         if(robBlobArea.Area() > 4)
         { robBlobArea.FillBlob(input, cvScalar(0, 255, 0));
             cvCircle(input, centrum, 20, CV_RGB(250, 250, 0),2, 1);}
     }
     
-    if(both ==2){
+    if(found_robot == 2){
         cvCircle(input, Right, 20, CV_RGB(250, 250, 250),2,1);
         cvCircle(input, Left, 20, CV_RGB(127, 127, 127), 2, 1);
-        cvCircle(input, target, 20, CV_RGB(0, 0, 0), 2, 1);
+        cvCircle(input, targetPos, 20, CV_RGB(0, 0, 0), 2, 1);
         double temp = sqrt((double)(Right.x - Left.x)*(Right.x - Left.x) + (Right.y - Left.y)*(Right.y - Left.y));
         temp = acos((Right.x-Left.x)/temp);
         temp = (temp/M_PI)*180;
@@ -315,32 +613,35 @@ void processCamera(){
         if(temp < 180){
             temp = 180 - temp;
         }
-        orientation = temp;
+        robotOrientation = temp;
         
-        location.x = (int)(Right.x + Left.x)/2;
-        location.y = (int)(Right.y + Left.y)/2;
-        double fruitAngle = sqrt((double)(target.x - location.x)*(target.x - location.x) +
-                                 (target.y - location.y)*(target.y-location.y));
-        fruitAngle = acos((target.x - location.x)/fruitAngle);
+        robotPos.x = (int)(Right.x + Left.x)/2;
+        robotPos.y = (int)(Right.y + Left.y)/2;
+        double fruitAngle = sqrt((double)(targetPos.x - robotPos.x)*(targetPos.x - robotPos.x) +
+                                 (targetPos.y - robotPos.y)*(targetPos.y-robotPos.y));
+        fruitAngle = acos((targetPos.x - robotPos.x)/fruitAngle);
         fruitAngle = (fruitAngle/M_PI)*180;
-        if(((target.y - location.y) > 0) && ((target.x-location.x) > 0)){
+        if(((targetPos.y - robotPos.y) > 0) && ((targetPos.x-robotPos.x) > 0)){
             fruitAngle = 360 -fruitAngle;
         }
-        else if(((target.y - location.y > 0) && ((target.x - location.x) < 0))){
+        else if(((targetPos.y - robotPos.y > 0) && ((targetPos.x - robotPos.x) < 0))){
             float rho = 180 - fruitAngle;
             fruitAngle = fruitAngle + 2*rho;
         }
         
-        int difference = (fruitAngle - orientation);
+        int difference = (fruitAngle - robotOrientation);
         if(difference > 180){
             difference = difference - 360;
         }
         if(difference < -180){
             difference = difference + 360;
         }
+        
+        /*
         CvPoint relativeFruitPos;
         relativeFruitPos.x = (int)cos((double)((difference/360)*M_PI)) * 8;
         relativeFruitPos.y = (int)sin((double)((difference/360)*M_PI)) * 8;
+        */
         
         //printf("The orientation is: %d \n", difference);
     }
@@ -354,10 +655,11 @@ void processCamera(){
     cvReleaseImage(&i1);
     
     CvScalar cyan = CV_RGB(0, 250,250);
-    CvScalar lightGreen = CV_RGB(127,255,0);
-    CvScalar purple = CV_RGB(138,43,226);
+    //CvScalar lightGreen = CV_RGB(127,255,0);
+    //CvScalar purple = CV_RGB(138,43,226);
     
     // here is where we are going to draw in our squares.
+    /*
     if(path.size() > 0){
         int xdiff, ydiff;
         if(path.size() > 20){
@@ -378,20 +680,65 @@ void processCamera(){
             cvCircle(input, path.at(i),1, cyan, 2);
         }
     }
+    */
  
-    cvNamedWindow("Output Image - Blob Demo", 1);
-    if(localCount % 5 == 0 && 0){
-        localCount = 0;
-        string imageName;
-        std::stringstream out;
-        out << "trace/trace" << imageCount <<".jpg";
-        imageName = out.str();
-        cvSaveImage(imageName.c_str(), input);
-        imageCount= imageCount + 1;
+   // cvNamedWindow("Output Image - Blob Demo", 1);
+    {
+        static int localCount = 0;
+        if(localCount % 5 == 0 && 0){
+            localCount = 0;
+            string imageName;
+            std::stringstream out;
+            out << "trace/trace" << imageCount <<".jpg";
+            imageName = out.str();
+            cvSaveImage(imageName.c_str(), input);
+            imageCount= imageCount + 1;
+        }
+        localCount++;
     }
-    localCount++;
+    
     cvShowImage("Output Image - Blob Demo", input);
     cvReleaseImage(&input);
+    
+    printf("found robot %d, fruit %d\n", found_robot, found_fruit);
+    
+    return found_robot==2 && found_fruit;
+}
+
+static void idleAwaitingObjects()
+{
+ 	int key;
+	IplImage* img = NULL;
+    
+	while(1){
+        key = cvWaitKey(30);
+        http_fetch(cameraURL[0],"Data/Camera0.jpg");
+        img=cvLoadImage("Data/Camera0.jpg");
+        cvShowImage("Display", img);
+        cvReleaseImage(&img);
+        if(key == '3')
+            break;
+	} 
+}
+
+void processCamera()
+{
+    static int first = 1, found=0;
+
+    if(first){
+        first = 0;
+        setBackground();
+        setObstacleBackground();
+	}
+    
+    idleAwaitingObjects();
+    
+    if (!found && find_objects()) {
+        found = 1;
+        visibility_image = visibility_find_robot_path(visibility_image);
+        cvShowImage("visibility graph", visibility_image);
+        printf("found both\n");
+    }
 }
 
 void initCameras(){

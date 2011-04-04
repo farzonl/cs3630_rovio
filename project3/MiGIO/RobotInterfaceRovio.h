@@ -5,8 +5,6 @@
 
 static char robotImage[] = "Data/RovioHeader.jpg";
 
-
-
 static int numActuators = 2;
 static int actuatorValues[] = {0,0};
 static const char* actuatorNames[] = {" 0)Cmd"," 1)Speed"};
