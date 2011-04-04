@@ -39,10 +39,17 @@ typedef enum RovioDirection {
     DirRightBackward
 } RovioDirection;
 
+typedef enum vertical_class {
+    low = 0,
+    middle,
+    high
+} vertical_class;
+
 void rovio_drive(int n, RovioDirection direction);
 // direction = Left or Right
 // n = 3 for 45, 7 for 90, technically in increments of 20 degrees
 void rovio_turn(horizontal_class direction, int n);
+void rovio_camera_height(vertical_class height);
 
 #endif
 #endif

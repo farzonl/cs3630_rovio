@@ -36,6 +36,8 @@ void rovio_drive(int n, RovioDirection direction)
     for(i = 0; i < n; i++){
 		http_fetch(buf, NULL);
     }
+    
+    sleep(3);
 }
 
 void rovio_turn(horizontal_class direction, int n)
@@ -47,6 +49,31 @@ void rovio_turn(horizontal_class direction, int n)
              "/rev.cgi?Cmd=nav&action=18&drive=%d&speed=5&angle=%d", direction == TurnLeft ? 17 : 18, n);
         
 	http_fetch(buf, NULL);
+    
+    sleep(3);
+}
+
+void rovio_camera_height(vertical_class height)
+{
+    char buf[1024];
+    int code;
+    
+    switch (height) {
+        case high:
+            code = 11;
+            break;
+        case low:
+            code = 12;
+            break;
+        default:
+            code = 13;
+    }
+    
+    snprintf(buf, sizeof(buf),
+             "http://admin:admin1@" ROVIO_HOST ":80"
+             "/rev.cgi?Cmd=nav&action=18&drive=%d", code);
+    
+    http_fetch(buf, NULL);
 }
 
 void robotSendActuators(){

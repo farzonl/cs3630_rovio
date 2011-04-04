@@ -14,34 +14,6 @@
 #endif
 using namespace std;
 
-
-/* 
- steps
- 
- - creation of map
- <creation of obstacle image goes here from video>
- 1. load obstacle image from disk (hack)
- 2. run blob detection on red things
- 3. create corner image
- 4. (however this works) mark corners inside blobs, create polygons with that
- 
- 5. create visibility environment with empty space = everything not an obstacle
- 
- 6. get a graph or something
- 
- - motion along map
- */
-
-CvMemStorage *gStorage = NULL;
-static std::vector<CvBox2D> obstacleboxes;
-static VisiLibity::Environment *visibility;
-
-static std::vector<VisiLibity::Point> path_to_goal;
-
-CvPoint fruitPos, robotPos;
-CvPoint targetPos, originalRobotPos;
-int robotOrientation;
-
 static float angle_towards(int x1, int y1, int x2, int y2)
 {
     int xv = x2 - x1;
@@ -56,19 +28,137 @@ static float angle_towards(int x1, int y1, int x2, int y2)
     return res;
 }
 
+CvPoint fruitPos, robotPos;
+CvPoint targetPos, originalRobotPos;
+int robotOrientation;
+
+static int find_objects(bool find_fruit);
+
+static void robot_turn_from_to(float curAngle, float wantAngle)
+{
+    float maxA, minA;
+    horizontal_class turn;
+    float diff, fn;
+    int n;
+    
+    if (wantAngle > curAngle) {
+        turn = TurnLeft;
+        maxA = wantAngle;
+        minA = curAngle;
+    } else {
+        turn = TurnRight;
+        maxA = curAngle;
+        minA = wantAngle;
+    }
+    
+    diff = maxA - minA;
+
+    fn = diff / 15.;
+    n = fn + .5;
+    
+    printf(">> turn %f -> %f (%f degrees dir %d = %f turns = cmd %d)\n", curAngle, wantAngle, diff, (int)turn, fn, n);
+    rovio_turn(turn, n);
+    
+    do {
+        horizontal_class cturn;
+
+        // wait to find the robot
+        while (find_objects(false) == false)
+            ;
+        curAngle = robotOrientation;
+        if (wantAngle > curAngle) {
+            cturn = TurnLeft;
+        } else {
+            cturn = TurnRight;
+        }
+        
+        if ((abs(curAngle - wantAngle) <= 30 || abs((360+curAngle) - wantAngle) <= 30))
+            break;
+        
+        if (turn == TurnLeft && wantAngle <= curAngle)
+            break;
+        if (turn == TurnRight && wantAngle >= curAngle)
+            break;
+        printf("correction turn\n");
+        rovio_turn(turn, 1);
+    } while (1);
+    
+    printf("<< turned\n");
+}
+
+static int distance(int x1, int y1, int x2, int y2)
+{
+    int xd = x1-x2;
+    int yd = y1-y2;
+    return xd*xd+yd*yd;
+}
+
+// we're already turned as best we can
+// just drive forwards until past it
+static void robot_drive_to(int wantX, int wantY)
+{
+    int cdistance = INT_MAX, last_distance = INT_MAX;
+    
+    printf(">> drive from %d,%d to %d,%d\n", robotPos.x, robotPos.y, wantX, wantY);
+    
+    cdistance = distance(robotPos.x, robotPos.y, wantX, wantY);
+
+    do {
+        printf("distance = %f, driving forward\n", sqrt(cdistance));
+        rovio_drive(5, DirForward);
+                
+        // wait to find the robot
+        while (find_objects(false) == false)
+            ;
+        
+        last_distance = cdistance;
+        cdistance = distance(robotPos.x, robotPos.y, wantX, wantY);
+        printf("distance now = %f\n", sqrt(cdistance));
+    } while (cdistance <= last_distance);
+    
+    printf("<< distance increased to %f (pos %d, %d), done\n", sqrt(cdistance), robotPos.x, robotPos.y);
+}
+
+CvMemStorage *gStorage = NULL;
+static std::vector<CvBox2D> obstacleboxes;
+static VisiLibity::Environment *visibility;
+
+static std::vector<VisiLibity::Point> path_to_goal;
+
 static void drive_to_point(VisiLibity::Point p)
 {
-    int cur_x = robotPos.x, cur_y = robotPos.y;
-    int next_x = p.x(), next_y = p.y();
-    float angle = angle_towards(cur_x, cur_y, next_x, next_y);
+    int should_stop = 0;
     
-    printf("drive from %d,%d to %d,%d\n", robotPos.x, robotPos.y, next_x, next_y);
-    printf("change orientation from %d (%f) to %f (%f)\n", robotOrientation, robotOrientation * (180./M_PI)
-           , angle, angle * (180./M_PI));
-    
-    robotPos.x = next_x;
-    robotPos.y = next_y;
-    robotOrientation = angle;
+    do {
+        int next_x = p.x(), next_y = p.y();
+        int cur_x = robotPos.x, cur_y = robotPos.y;
+        int did_turn = 0, did_drive = 0;;
+        
+        do {
+            float angle = angle_towards(cur_x, cur_y, next_x, next_y);
+            float curAngleDeg = robotOrientation;
+            float angleDeg = angle * (180./M_PI);
+            
+            if ((abs(curAngleDeg - angleDeg) < 20 || abs((360+curAngleDeg) - angleDeg) < 20))
+                break;
+            
+            did_turn = 1;
+            
+            robot_turn_from_to(curAngleDeg, angleDeg);
+        } while (0);
+        
+        do {
+            cur_x = robotPos.x, cur_y = robotPos.y;
+            if (distance(cur_x,cur_y,next_x,next_y) <= 200*200)
+                break;
+            
+            did_drive = 1;
+            
+            robot_drive_to(next_x, next_y);
+        } while (0);
+        
+        should_stop = !did_drive && !did_turn;
+    } while (!should_stop);
 }
 
 // drives robot (robotPos) to the goal
@@ -79,6 +169,7 @@ static void drive_to_goal()
         Point p = path_to_goal[i];
         
         drive_to_point(p);
+        return;
     }
 }
 
@@ -132,10 +223,10 @@ static IplImage *visibility_mark_obstacle_boxes(IplImage *obstacles)
 {
     IplImage *grey = same_size_image_8bit(obstacles);
     
-    cvCvtColor(obstacles, grey, CV_BGR2GRAY);
+    cvCvtColor(obstacles, grey, CV_BGR2GRAY);    
     
-    CBlobResult blobs = CBlobResult(grey, NULL, 0, true);
-    blobs.Filter(blobs, B_INCLUDE, CBlobGetMean(), B_GREATER, 30);
+    CBlobResult blobs = CBlobResult(grey, NULL, 10, true);
+
     blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 50);
     blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_LESS, 250000);
     
@@ -177,7 +268,7 @@ static IplImage *visibility_mark_obstacle_boxes(IplImage *obstacles)
             cvLine(obstacles, cvPointFrom32f(pt[j]), cvPointFrom32f(pt[(j+1)%4]), CV_RGB(0, 0, 255));
         }
     }
-        
+    
     return obstacles;
 }
 
@@ -382,19 +473,23 @@ void setObstacleBackground(){
 			backr = ((uchar *)(background->imageData + i*img->widthStep))[j*img->nChannels + 2];
 			backg = ((uchar *)(background->imageData + i*img->widthStep))[j*img->nChannels + 1];
 			backb = ((uchar *)(background->imageData + i*img->widthStep))[j*img->nChannels + 0];
-			if(((r-backr)*(r-backr) + (g-backg)*(g-backg)+ (b-backb)*(b-backb)) < 1000){
-				((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 2] = 0;
-                
-				((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 1] = 0;
-				((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 0] = 0;
-			}
-			else{
-				((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 2] = 255;
-				((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 1] = 0;
-				((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 0] = 0;
-			}
+            
+            int diff = (r-backr)*(r-backr) + (g-backg)*(g-backg)+ (b-backb)*(b-backb);
+            
+            diff = sqrt(diff);
+            if (diff > 255) diff = 255;
+            if (diff < 0) diff = 0;
+            
+            if (diff > 20) diff = 255;
+            
+            ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 2] = diff;
+            ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 1] = 0;
+            ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 0] = 0;
 		}
 	}
+        
+    cvErode(img, img);
+    cvDilate(img, img);
     
     img = visibility_mark_obstacle_boxes(img);
     img = visibility_make_visibility_graph(img);
@@ -427,6 +522,9 @@ int RGB_filter1(int r, int g, int b, int threshold){
     if (diff > 255) diff = 255;
     if (diff < 0) diff = 0;
     diff = 255 - diff;
+    
+    if (diff <= 180) diff = 0;
+    
     return diff;
 }
 
@@ -444,6 +542,9 @@ int RGB_filter2(int r, int g, int b, int threshold){
     if (diff > 255) diff = 255;
     if (diff < 0) diff = 0;
     diff = 255 - diff;
+    
+    if (diff <= 180) diff = 0;
+
     return diff;
 }
 
@@ -466,7 +567,8 @@ int RGB_filter3(int r, int g, int b, int threshold){
 }
 
 // finds robot and fruit
-static int find_objects(){
+static int find_objects(bool find_fruit)
+{
 	IplImage* input;
     IplImage* img, *imgCopy;
     IplImage* i1;
@@ -513,7 +615,7 @@ static int find_objects(){
 		}
 	}
     
-	cvShowImage("Background subtracted", img);
+	//cvShowImage("Background subtracted", img);
 	for(int i = 0; i < img->height; i++) {
 		for(int j = 0; j < img->width; j++) {
 			int r = ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 2];
@@ -532,23 +634,26 @@ static int find_objects(){
     cvErode(rob, rob, NULL, 2);
     cvErode(fruit, fruit);
     
+    /*
     cvShowImage("robotLeft", rob);
     cvShowImage("robotRight", i1);
-    cvShowImage("fruit", fruit);
+    
+     cvShowImage("fruit", fruit);
+    */
     
     CBlobResult robBlobs = CBlobResult(rob, NULL, 0, true);
     CBlobResult blobs = CBlobResult(i1, NULL, 0, true);
     CBlobResult fruitBlob = CBlobResult(fruit, NULL, 0, true);
     
-    fruitBlob.Filter(fruitBlob, B_INCLUDE, CBlobGetMean(), B_GREATER, 30);
+    fruitBlob.Filter(fruitBlob, B_INCLUDE, CBlobGetMean(), B_GREATER, 120);
     fruitBlob.Filter(fruitBlob, B_INCLUDE, CBlobGetArea(), B_GREATER, 20);
     fruitBlob.Filter(fruitBlob, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
 
-    blobs.Filter(blobs, B_INCLUDE, CBlobGetMean(), B_GREATER, 50);
+    blobs.Filter(blobs, B_INCLUDE, CBlobGetMean(), B_GREATER, 130);
     blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 50);
     blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
     
-    robBlobs.Filter(robBlobs, B_INCLUDE, CBlobGetMean(), B_GREATER, 50);
+    robBlobs.Filter(robBlobs, B_INCLUDE, CBlobGetMean(), B_GREATER, 130);
     robBlobs.Filter(robBlobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 20);
     robBlobs.Filter(robBlobs, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
 
@@ -717,14 +822,16 @@ static int find_objects(){
     }
     
     cvShowImage("Output Image - Blob Demo", input);
+    cvWaitKey(3);
+
     cvReleaseImage(&input);
     
     int distance = (fruitPos.x - robotPos.x)*(fruitPos.x - robotPos.x) +
                     (fruitPos.y - robotPos.y)*(fruitPos.y-robotPos.y);
     
-    printf("found robot %d (%d,%d), fruit %d (%d,%d), dist %f\n", found_robot, robotPos.x, robotPos.y, found_fruit, fruitPos.x, fruitPos.y, sqrt(distance));
+    printf("found robot %d (%d,%d), angle %d, fruit %d (%d,%d), dist %f\n", found_robot, robotPos.x, robotPos.y, robotOrientation, found_fruit, fruitPos.x, fruitPos.y, sqrt(distance));
     
-    return found_robot==2 && found_fruit && (distance > 80*80);
+    return found_robot==2 && (!find_fruit || (found_fruit && (distance > 80*80)));
 }
 
 static void idleAwaitingObjects()
@@ -760,20 +867,25 @@ void processCamera()
         placed = 1;
     }
     
-    if (!found && find_objects()) {
+    if (!found && find_objects(true)) {
         found = 1;
         originalRobotPos = robotPos;
         targetPos = fruitPos;
         visibility_image = visibility_find_robot_path(visibility_image);
         cvShowImage("visibility graph", visibility_image);
         
-        printf("drive to fruit\n");
+        rovio_camera_height(middle);
+        
+        printf("--\ndrive to fruit\n\n");
         drive_to_goal();
         
-        printf("drive back\n");
+        rovio_camera_height(low);
+        
+        printf("--\ndrive back\n\n");
         targetPos = originalRobotPos;
         visibility_find_robot_path(NULL);
         drive_to_goal();
+        
     }
 }
 
