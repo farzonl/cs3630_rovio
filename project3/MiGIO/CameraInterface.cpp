@@ -723,7 +723,7 @@ static void idleAwaitingObjects()
 
 void processCamera()
 {
-    static int first = 1, found=0;
+    static int first = 1, placed = 0, found=0;
 
     if(first){
         first = 0;
@@ -731,7 +731,10 @@ void processCamera()
         setObstacleBackground();
 	}
     
-    idleAwaitingObjects();
+    if (!placed) {
+        idleAwaitingObjects();
+        placed = 1;
+    }
     
     if (!found && find_objects()) {
         found = 1;
