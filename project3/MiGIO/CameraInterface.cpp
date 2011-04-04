@@ -38,7 +38,8 @@ static VisiLibity::Environment *visibility;
 
 static std::vector<VisiLibity::Point> path_to_goal;
 
-CvPoint targetPos, robotPos;
+CvPoint fruitPos, robotPos;
+CvPoint targetPos, originalRobotPos;
 int robotOrientation;
 
 static float angle_towards(int x1, int y1, int x2, int y2)
@@ -70,7 +71,7 @@ static void drive_to_point(VisiLibity::Point p)
     robotOrientation = angle;
 }
 
-// drives along path_to_goal
+// drives robot (robotPos) to the goal
 static void drive_to_goal()
 {
     using namespace VisiLibity;
@@ -554,7 +555,7 @@ static int find_objects(){
         CvBox2D BlobEllipse = fruitBlobArea.GetEllipse();
         CvPoint centrum = cvPoint(BlobEllipse.center.x, BlobEllipse.center.y);
 
-        targetPos = centrum;
+        fruitPos = centrum;
         found_fruit = 1;
         if(fruitBlobArea.Area() > 10)
         { fruitBlobArea.FillBlob(input, cvScalar(255, 0, 250));
@@ -593,7 +594,7 @@ static int find_objects(){
     if(found_robot == 2){
         cvCircle(input, Right, 20, CV_RGB(250, 250, 250),2,1);
         cvCircle(input, Left, 20, CV_RGB(127, 127, 127), 2, 1);
-        cvCircle(input, targetPos, 20, CV_RGB(0, 0, 0), 2, 1);
+        cvCircle(input, fruitPos, 20, CV_RGB(0, 0, 0), 2, 1);
         double temp = sqrt((double)(Right.x - Left.x)*(Right.x - Left.x) + (Right.y - Left.y)*(Right.y - Left.y));
         temp = acos((Right.x-Left.x)/temp);
         temp = (temp/M_PI)*180;
@@ -617,14 +618,14 @@ static int find_objects(){
         
         robotPos.x = (int)(Right.x + Left.x)/2;
         robotPos.y = (int)(Right.y + Left.y)/2;
-        double fruitAngle = sqrt((double)(targetPos.x - robotPos.x)*(targetPos.x - robotPos.x) +
-                                 (targetPos.y - robotPos.y)*(targetPos.y-robotPos.y));
-        fruitAngle = acos((targetPos.x - robotPos.x)/fruitAngle);
+        double fruitAngle = sqrt((double)(fruitPos.x - robotPos.x)*(fruitPos.x - robotPos.x) +
+                                 (fruitPos.y - robotPos.y)*(fruitPos.y-robotPos.y));
+        fruitAngle = acos((fruitPos.x - robotPos.x)/fruitAngle);
         fruitAngle = (fruitAngle/M_PI)*180;
-        if(((targetPos.y - robotPos.y) > 0) && ((targetPos.x-robotPos.x) > 0)){
+        if(((fruitPos.y - robotPos.y) > 0) && ((fruitPos.x-robotPos.x) > 0)){
             fruitAngle = 360 -fruitAngle;
         }
-        else if(((targetPos.y - robotPos.y > 0) && ((targetPos.x - robotPos.x) < 0))){
+        else if(((fruitPos.y - robotPos.y > 0) && ((fruitPos.x - robotPos.x) < 0))){
             float rho = 180 - fruitAngle;
             fruitAngle = fruitAngle + 2*rho;
         }
@@ -738,9 +739,11 @@ void processCamera()
     
     if (!found && find_objects()) {
         found = 1;
+        originalRobotPos = robotPos;
+        targetPos = fruitPos;
         visibility_image = visibility_find_robot_path(visibility_image);
         cvShowImage("visibility graph", visibility_image);
-        printf("found both\n");
+        drive_to_goal();
     }
 }
 
