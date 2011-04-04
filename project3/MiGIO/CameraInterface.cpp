@@ -63,7 +63,7 @@ static void drive_to_point(VisiLibity::Point p)
     float angle = angle_towards(cur_x, cur_y, next_x, next_y);
     
     printf("drive from %d,%d to %d,%d\n", robotPos.x, robotPos.y, next_x, next_y);
-    printf("change orientation from %f (%f) to %f (%f)\n", robotOrientation, robotOrientation * (180./M_PI)
+    printf("change orientation from %d (%f) to %f (%f)\n", robotOrientation, robotOrientation * (180./M_PI)
            , angle, angle * (180./M_PI));
     
     robotPos.x = next_x;
@@ -135,8 +135,8 @@ static IplImage *visibility_mark_obstacle_boxes(IplImage *obstacles)
     cvCvtColor(obstacles, grey, CV_BGR2GRAY);
     
     CBlobResult blobs = CBlobResult(grey, NULL, 0, true);
-    blobs.Filter(blobs, B_INCLUDE, CBlobGetMean(), B_GREATER, 10);
-    blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 20);
+    blobs.Filter(blobs, B_INCLUDE, CBlobGetMean(), B_GREATER, 30);
+    blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 50);
     blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_LESS, 250000);
     
     blobs.PrintBlobs("/dev/stdout");
@@ -350,8 +350,8 @@ void setBackground(){
             break;
         cvReleaseImage(&img);
 	}
-	cvSmooth(img, img, CV_GAUSSIAN);
-	background = cvCloneImage(img);
+    background = cvCloneImage(img);
+	cvSmooth(img, background, CV_BILATERAL,5,5,50,50);
 	cvReleaseImage(&img);
 }
 
@@ -369,9 +369,11 @@ void setObstacleBackground(){
 		cvReleaseImage(&img);
 	}
     
-	cvSmooth(img, img, CV_GAUSSIAN);
-	ObstacleBackground = cvCloneImage(img);
-    
+    ObstacleBackground = cvCloneImage(img);
+	cvSmooth(img, ObstacleBackground, CV_BILATERAL,5,5,50,50);
+    cvReleaseImage(&img);
+    img = cvCloneImage(ObstacleBackground);
+
 	for(int i = 0; i < img->height; i++) {
 		for(int j = 0; j < img->width; j++) {
 			int r = ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 2];
@@ -415,44 +417,58 @@ int HSV_filter1(int h, int s, int v, int threshold) {
 int RGB_filter1(int r, int g, int b, int threshold){
 	//int FilteredColor[3] = {190, 190, 75}; //the RGB values for bright yellow.
 	int FilteredColor[3] = {10, 110, 60};//the filter for green
+    int black = (r+g+b) < 25;
+    if (black) return 0;
 	int diff = (FilteredColor[0] - r)*(FilteredColor[0]-r)+
                 (FilteredColor[1] - g)*(FilteredColor[1] - g)+
                 (FilteredColor[2] - b)*(FilteredColor[2] - b);
 
-	if(diff < threshold) return abs(diff - threshold);
-	return 0;
+    diff = sqrt(diff);
+    if (diff > 255) diff = 255;
+    if (diff < 0) diff = 0;
+    diff = 255 - diff;
+    return diff;
 }
 
 int RGB_filter2(int r, int g, int b, int threshold){
 	int FilteredColor[3] = {40, 60, 160}; //the RGB values for the blue felt.
 
+    int black = (r+g+b) < 25;
+    if (black) return 0;
+    
 	int diff = (FilteredColor[0] - r)*(FilteredColor[0]-r)+
                 (FilteredColor[1] - g)*(FilteredColor[1] - g)+
                 (FilteredColor[2] - b)*(FilteredColor[2] - b);
 
-	if(diff < threshold){
-		return abs(diff - threshold);
-	}
-	return 0;
+    diff = sqrt(diff);
+    if (diff > 255) diff = 255;
+    if (diff < 0) diff = 0;
+    diff = 255 - diff;
+    return diff;
 }
 
 int RGB_filter3(int r, int g, int b, int threshold){
 	//int FilteredColor[3] = {240, 70, 120}; //the RGB values for teh apple.
-	int FilteredColor[3] = {255, 250, 240}; // the RGB values for teh lemon
+	int FilteredColor[3] = {253, 249, 149}; // the RGB values for teh lemon
+    
+    int black = (r+g+b) < 25;
+    if (black) return 0;
+    
 	int diff = (FilteredColor[0] - r)*(FilteredColor[0]-r)+
                 (FilteredColor[1] - g)*(FilteredColor[1] - g)+
                 (FilteredColor[2] - b)*(FilteredColor[2] - b);
 
-	if(diff < threshold){
-		return abs(diff - threshold);
-	}
-	return 0;
+    diff = sqrt(diff);
+    if (diff > 255) diff = 255;
+    if (diff < 0) diff = 0;
+    diff = 255 - diff;
+    return diff;
 }
 
 // finds robot and fruit
 static int find_objects(){
 	IplImage* input;
-    IplImage* img;
+    IplImage* img, *imgCopy;
     IplImage* i1;
 	IplImage* rob;
 	IplImage* fruit;
@@ -476,8 +492,10 @@ static int find_objects(){
 	cvZero(rob);
 	cvZero(fruit);
     // Smooth input image using a Gaussian filter, assign HSV, BW image
-    cvSmooth(img, img, CV_GAUSSIAN); 
-    
+    imgCopy = cvCloneImage(img);
+    cvSmooth(imgCopy, img, CV_BILATERAL,5,5,50,50);
+    cvReleaseImage(&imgCopy);
+            
 	for(int i = 0; i < img->height; i ++){
 		for(int j = 0; j < img->width; j++){
 			int r,g,b, backr, backg, backb;
@@ -501,41 +519,41 @@ static int find_objects(){
 			int r = ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 2];
             int g = ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 1];
             int b = ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 0];
-            int f = RGB_filter1(r, g, b, 6000);
-            if(f) {
-				((uchar *)(i1->imageData + i*i1->widthStep))[j] = 255;
-            }
-            
-			int h = RGB_filter2(r, g, b, 6000);
-			if(h) {
-				//printf("test");q
-                
-				((uchar *)(rob->imageData + i*rob->widthStep))[j] = 255;
-            }
-			int fr = RGB_filter3(r,g,b, 6000);
-			if(fr){
-				//printf("passed:");
-				((uchar *)(fruit->imageData + i*fruit->widthStep))[j] = 255;
-			}
+
+            ((uchar *)(i1->imageData + i*i1->widthStep))[j] = RGB_filter1(r, g, b, 6000);
+			((uchar *)(rob->imageData + i*rob->widthStep))[j] = RGB_filter2(r, g, b, 6000);
+            ((uchar *)(fruit->imageData + i*fruit->widthStep))[j] = RGB_filter3(r,g,b, 6000);
         }
     }
     
     int found_robot=0, found_fruit=0;
     
+    cvErode(i1, i1, NULL, 2);
+    cvErode(rob, rob, NULL, 2);
+    cvErode(fruit, fruit);
+    
+    cvShowImage("robotLeft", rob);
+    cvShowImage("robotRight", i1);
+    cvShowImage("fruit", fruit);
+    
     CBlobResult robBlobs = CBlobResult(rob, NULL, 0, true);
     CBlobResult blobs = CBlobResult(i1, NULL, 0, true);
     CBlobResult fruitBlob = CBlobResult(fruit, NULL, 0, true);
     
-    fruitBlob.Filter(fruitBlob, B_INCLUDE, CBlobGetArea(), B_GREATER, 30);
+    fruitBlob.Filter(fruitBlob, B_INCLUDE, CBlobGetMean(), B_GREATER, 30);
+    fruitBlob.Filter(fruitBlob, B_INCLUDE, CBlobGetArea(), B_GREATER, 20);
     fruitBlob.Filter(fruitBlob, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
 
+    blobs.Filter(blobs, B_INCLUDE, CBlobGetMean(), B_GREATER, 50);
     blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 50);
     blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
     
+    robBlobs.Filter(robBlobs, B_INCLUDE, CBlobGetMean(), B_GREATER, 50);
     robBlobs.Filter(robBlobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 20);
+    robBlobs.Filter(robBlobs, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
 
     // find right side of robot
-    for (int i = 1; i < blobs.GetNumBlobs(); i++ )
+    for (int i = 0; i < blobs.GetNumBlobs(); i++ )
     {
         CBlob blobArea = blobs.GetBlob(i);
         CvBox2D BlobEllipse = blobArea.GetEllipse();
@@ -549,7 +567,7 @@ static int find_objects(){
     }
     
     // find fruit
-    for (int i = 1; i < fruitBlob.GetNumBlobs(); i++ )
+    for (int i = 0; i < fruitBlob.GetNumBlobs(); i++ )
     {
         CBlob fruitBlobArea = fruitBlob.GetBlob(i);
         CvBox2D BlobEllipse = fruitBlobArea.GetEllipse();
@@ -564,7 +582,7 @@ static int find_objects(){
         
     //robotPos.clear();
     //find other side of robot
-    for (int i = 1; i < robBlobs.GetNumBlobs(); i++ )
+    for (int i = 0; i < robBlobs.GetNumBlobs(); i++ )
     {
         //printf("blobbled");
         CBlob robBlobArea = robBlobs.GetBlob(i);
@@ -701,9 +719,12 @@ static int find_objects(){
     cvShowImage("Output Image - Blob Demo", input);
     cvReleaseImage(&input);
     
-    printf("found robot %d, fruit %d\n", found_robot, found_fruit);
+    int distance = (fruitPos.x - robotPos.x)*(fruitPos.x - robotPos.x) +
+                    (fruitPos.y - robotPos.y)*(fruitPos.y-robotPos.y);
     
-    return found_robot==2 && found_fruit;
+    printf("found robot %d (%d,%d), fruit %d (%d,%d), dist %f\n", found_robot, robotPos.x, robotPos.y, found_fruit, fruitPos.x, fruitPos.y, sqrt(distance));
+    
+    return found_robot==2 && found_fruit && (distance > 80*80);
 }
 
 static void idleAwaitingObjects()
@@ -732,6 +753,8 @@ void processCamera()
         setObstacleBackground();
 	}
     
+    cvShowImage("visibility graph", visibility_image);
+
     if (!placed) {
         idleAwaitingObjects();
         placed = 1;
@@ -743,6 +766,13 @@ void processCamera()
         targetPos = fruitPos;
         visibility_image = visibility_find_robot_path(visibility_image);
         cvShowImage("visibility graph", visibility_image);
+        
+        printf("drive to fruit\n");
+        drive_to_goal();
+        
+        printf("drive back\n");
+        targetPos = originalRobotPos;
+        visibility_find_robot_path(NULL);
         drive_to_goal();
     }
 }
