@@ -34,6 +34,17 @@ int robotOrientation;
 
 static int find_objects(bool find_fruit);
 
+// 1 if b is CCW of a
+// 0 if b is CW of a
+static int compare_angle(float a, float b)
+{
+    float d = b - a;
+    if (d <= 180. && d > 0) {
+        return 1;
+    }
+    return 0;
+}
+
 static void robot_turn_from_to(float curAngle, float wantAngle)
 {
     float maxA, minA;
@@ -41,7 +52,7 @@ static void robot_turn_from_to(float curAngle, float wantAngle)
     float diff, fn;
     int n;
     
-    if (wantAngle > curAngle) {
+    if (compare_angle(curAngle, wantAngle)) {
         turn = TurnLeft;
         maxA = wantAngle;
         minA = curAngle;
@@ -66,13 +77,13 @@ static void robot_turn_from_to(float curAngle, float wantAngle)
         while (find_objects(false) == false)
             ;
         curAngle = robotOrientation;
-        if (wantAngle > curAngle) {
+        if (compare_angle(curAngle, wantAngle)) {
             cturn = TurnLeft;
         } else {
             cturn = TurnRight;
         }
         
-        if ((abs(curAngle - wantAngle) <= 30 || abs((360+curAngle) - wantAngle) <= 30))
+        if ((abs(curAngle - wantAngle) <= 10 || abs((360+curAngle) - wantAngle) <= 10))
             break;
         
         if (turn == TurnLeft && wantAngle <= curAngle)
@@ -83,7 +94,7 @@ static void robot_turn_from_to(float curAngle, float wantAngle)
         rovio_turn(turn, 1);
     } while (1);
     
-    printf("<< turned\n");
+    printf("<< turned, final angle %f wanted %f\n", curAngle, wantAngle);
 }
 
 static int distance(int x1, int y1, int x2, int y2)
@@ -139,7 +150,7 @@ static void drive_to_point(VisiLibity::Point p)
             float curAngleDeg = robotOrientation;
             float angleDeg = angle * (180./M_PI);
             
-            if ((abs(curAngleDeg - angleDeg) < 20 || abs((360+curAngleDeg) - angleDeg) < 20))
+            if ((abs(curAngleDeg - angleDeg) < 10 || abs((360+curAngleDeg) - angleDeg) < 10))
                 break;
             
             did_turn = 1;
@@ -149,7 +160,7 @@ static void drive_to_point(VisiLibity::Point p)
         
         do {
             cur_x = robotPos.x, cur_y = robotPos.y;
-            if (distance(cur_x,cur_y,next_x,next_y) <= 200*200)
+            if (distance(cur_x,cur_y,next_x,next_y) <= 100*100)
                 break;
             
             did_drive = 1;
