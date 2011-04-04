@@ -40,7 +40,7 @@ int main(void)
   curl = curl_easy_init();
   
 
-  /*initCameras();*/
+  initCameras();
 #ifdef _WIN32
   //_beginthread(cameraThread,0,(void*)0);
 #else
@@ -51,7 +51,8 @@ int main(void)
   initConsole();
   initStatusWindow();
 
- #ifdef USE_CONTROLLER
+
+#ifdef USE_CONTROLLER
 	  robotReadSensors();  // Blank functions
 	  robotController();
 #endif
