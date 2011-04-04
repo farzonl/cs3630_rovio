@@ -18,14 +18,12 @@ static float angle_towards(int x1, int y1, int x2, int y2)
 {
     int xv = x2 - x1;
     int yv = y2 - y1;
-    
-    //printf("xv %d yv %d\n", xv, yv);
-    
+        
     float res = atan2f(yv, xv);
     
     res = (2*M_PI) - res;
     res = fmodf(res, 2*M_PI);
-    return res;
+    return res * (180./M_PI);
 }
 
 CvPoint fruitPos, robotPos;
@@ -83,6 +81,7 @@ static void robot_turn_from_to(float curAngle, float wantAngle)
             cturn = TurnRight;
         }
         
+        // FIXME make angles_are_closer_than(...) function
         if ((abs(curAngle - wantAngle) <= 10 || abs((360+curAngle) - wantAngle) <= 10))
             break;
         
@@ -108,7 +107,7 @@ static int distance(int x1, int y1, int x2, int y2)
 // just drive forwards until past it
 static void robot_drive_to(int wantX, int wantY)
 {
-    int cdistance = INT_MAX, last_distance = INT_MAX;
+    int cdistance, last_distance;
     
     printf(">> drive from %d,%d to %d,%d\n", robotPos.x, robotPos.y, wantX, wantY);
     
@@ -119,6 +118,7 @@ static void robot_drive_to(int wantX, int wantY)
         rovio_drive(5, DirForward);
                 
         // wait to find the robot
+        // FIXME make this a function
         while (find_objects(false) == false)
             ;
         
@@ -127,7 +127,7 @@ static void robot_drive_to(int wantX, int wantY)
         printf("distance now = %f\n", sqrt(cdistance));
     } while (cdistance <= last_distance);
     
-    printf("<< distance increased to %f (pos %d, %d), done\n", sqrt(cdistance), robotPos.x, robotPos.y);
+    printf("<< stopped, distance increased to %f (pos %d, %d)\n", sqrt(cdistance), robotPos.x, robotPos.y);
 }
 
 CvMemStorage *gStorage = NULL;
@@ -138,28 +138,30 @@ static std::vector<VisiLibity::Point> path_to_goal;
 
 static void drive_to_point(VisiLibity::Point p)
 {
-    int should_stop = 0;
+    int did_drive;
+    int should_redo_turn = 1;
     
     do {
         int next_x = p.x(), next_y = p.y();
         int cur_x = robotPos.x, cur_y = robotPos.y;
-        int did_turn = 0, did_drive = 0;;
+        float angle;
+        
+        did_drive = 0;
         
         do {
-            float angle = angle_towards(cur_x, cur_y, next_x, next_y);
-            float curAngleDeg = robotOrientation;
-            float angleDeg = angle * (180./M_PI);
+            angle = angle_towards(cur_x, cur_y, next_x, next_y);
+            float curAngle = robotOrientation;
             
-            if ((abs(curAngleDeg - angleDeg) < 10 || abs((360+curAngleDeg) - angleDeg) < 10))
+            if (!should_redo_turn)
                 break;
             
-            did_turn = 1;
-            
-            robot_turn_from_to(curAngleDeg, angleDeg);
+            if ((abs(curAngle - angle) < 10 || abs((360+curAngle) - angle) < 10))
+                break;
+                        
+            robot_turn_from_to(curAngle, angle);
         } while (0);
         
         do {
-            cur_x = robotPos.x, cur_y = robotPos.y;
             if (distance(cur_x,cur_y,next_x,next_y) <= 100*100)
                 break;
             
@@ -168,8 +170,16 @@ static void drive_to_point(VisiLibity::Point p)
             robot_drive_to(next_x, next_y);
         } while (0);
         
-        should_stop = !did_drive && !did_turn;
-    } while (!should_stop);
+        // check the angle of the distance
+        // if it flipped, we crossed the center point
+        // if it didn't, we drove off somewhere - turn around and try again
+        float new_angle = angle_towards(robotPos.x, robotPos.y, next_x, next_y);
+        float inverse_new_angle = 360. - new_angle;
+        
+        // FIXME make angles_are_closer_than(...) function
+        should_redo_turn = !(abs(inverse_new_angle - angle) < 45 || abs((360+inverse_new_angle) - angle) < 45);
+        printf("-- after stopping, old angle = %f, new angle = %f, should be inverse, retry %d, didDrive %d\n", angle, new_angle, should_redo_turn, did_drive);
+    } while (should_redo_turn);
 }
 
 // drives robot (robotPos) to the goal
@@ -729,7 +739,7 @@ static int find_objects(bool find_fruit)
         cvCircle(input, Right, 20, CV_RGB(250, 250, 250),2,1);
         cvCircle(input, Left, 20, CV_RGB(127, 127, 127), 2, 1);
         cvCircle(input, fruitPos, 20, CV_RGB(0, 0, 0), 2, 1);
-        double temp = sqrt((double)(Right.x - Left.x)*(Right.x - Left.x) + (Right.y - Left.y)*(Right.y - Left.y));
+        double temp = sqrt(distance(Left.x,Left.y,Right.x,Right.y));
         temp = acos((Right.x-Left.x)/temp);
         temp = (temp/M_PI)*180;
 
@@ -752,10 +762,10 @@ static int find_objects(bool find_fruit)
         
         robotPos.x = (int)(Right.x + Left.x)/2;
         robotPos.y = (int)(Right.y + Left.y)/2;
-        double fruitAngle = sqrt((double)(fruitPos.x - robotPos.x)*(fruitPos.x - robotPos.x) +
-                                 (fruitPos.y - robotPos.y)*(fruitPos.y-robotPos.y));
-        fruitAngle = acos((fruitPos.x - robotPos.x)/fruitAngle);
-        fruitAngle = (fruitAngle/M_PI)*180;
+        /*
+        double fruitAngle = sqrt(distance(fruitPos.x, fruitPos.y, robotPos.x, robotPos.y));
+        fruitAngle = acos((fruitPos.x - robotPos.x)/fruitAngle) * (180./M_PI);
+
         if(((fruitPos.y - robotPos.y) > 0) && ((fruitPos.x-robotPos.x) > 0)){
             fruitAngle = 360 -fruitAngle;
         }
@@ -771,7 +781,7 @@ static int find_objects(bool find_fruit)
         if(difference < -180){
             difference = difference + 360;
         }
-        
+        */
         /*
         CvPoint relativeFruitPos;
         relativeFruitPos.x = (int)cos((double)((difference/360)*M_PI)) * 8;
@@ -837,12 +847,11 @@ static int find_objects(bool find_fruit)
 
     cvReleaseImage(&input);
     
-    int distance = (fruitPos.x - robotPos.x)*(fruitPos.x - robotPos.x) +
-                    (fruitPos.y - robotPos.y)*(fruitPos.y-robotPos.y);
+    int sdistance = distance(fruitPos.x, fruitPos.y, robotPos.x, robotPos.y);
     
-    printf("found robot %d (%d,%d), angle %d, fruit %d (%d,%d), dist %f\n", found_robot, robotPos.x, robotPos.y, robotOrientation, found_fruit, fruitPos.x, fruitPos.y, sqrt(distance));
+    printf("found robot %d (%d,%d), angle %d, fruit %d (%d,%d), dist %f\n", found_robot, robotPos.x, robotPos.y, robotOrientation, found_fruit, fruitPos.x, fruitPos.y, sqrt(sdistance));
     
-    return found_robot==2 && (!find_fruit || (found_fruit && (distance > 80*80)));
+    return found_robot==2 && (!find_fruit || (found_fruit && (sdistance > 50*50)));
 }
 
 static void idleAwaitingObjects()
