@@ -36,7 +36,6 @@ static int find_objects(bool find_fruit);
 // 0 if b is CW of a
 static int compare_angle(float a, float b)
 {
-    float ccw_distance, cw_distance;
     int ret;
     
     if ((a <= 180 && b <= 180) || (a >= 180 && b >= 180)) {
@@ -60,7 +59,7 @@ static void robot_turn_from_to(float curAngle, float wantAngle)
     float maxA, minA;
     RovioTurn turn;
     float diff, fn;
-    int n, after_small_turn=0;
+    int n;
     float lastCurAngle = curAngle;
     
     if (compare_angle(curAngle, wantAngle)) {
@@ -110,7 +109,7 @@ static void robot_turn_from_to(float curAngle, float wantAngle)
         }
         
         if ((abs(curAngle - wantAngle) < 10 || abs((360+curAngle) - wantAngle) < 10)) {
-            printf("-- can't improve turn, break\n", curAngle, wantAngle);
+            printf("-- can't improve turn, break (cur = %f want = %f)\n", curAngle, wantAngle);
             break;
         }
         
@@ -251,6 +250,7 @@ static void draw_rect(IplImage *frame, CvRect r, int color)
     cvRectangle(frame, pt1, pt2, colors[color], 3, 8, 0);
 }
 
+#if 0
 static void draw_point(IplImage *frame, int x, int y, int color)
 {
     // drawing
@@ -267,6 +267,7 @@ static void draw_point(IplImage *frame, int x, int y, int color)
     
     cvRectangle(frame, pt1, pt2, colors[color], 3, 8, 0);
 }
+#endif
 
 // returns input image (obstacles highlighted)
 // fills out global variable obstacleboxes
