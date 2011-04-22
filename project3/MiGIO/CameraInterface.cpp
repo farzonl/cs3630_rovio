@@ -230,6 +230,7 @@ static IplImage *same_size_image_8bit(IplImage *frame)
     return cvCreateImage(cvSize(frame->width, frame->height), IPL_DEPTH_8U, 1);
 }
 
+#if 0
 static void draw_rect(IplImage *frame, CvRect r, int color)
 {
     // drawing
@@ -250,7 +251,6 @@ static void draw_rect(IplImage *frame, CvRect r, int color)
     cvRectangle(frame, pt1, pt2, colors[color], 3, 8, 0);
 }
 
-#if 0
 static void draw_point(IplImage *frame, int x, int y, int color)
 {
     // drawing
@@ -271,7 +271,7 @@ static void draw_point(IplImage *frame, int x, int y, int color)
 
 // returns input image (obstacles highlighted)
 // fills out global variable obstacleboxes
-static IplImage *visibility_mark_obstacle_boxes(IplImage *obstacles)
+static void visibility_mark_obstacle_boxes(IplImage *obstacles)
 {
     IplImage *grey = same_size_image_8bit(obstacles);
     
@@ -306,7 +306,7 @@ static IplImage *visibility_mark_obstacle_boxes(IplImage *obstacles)
             if (fr.width >= obstacles->width && fr.height >= obstacles->height)
                 continue;
             
-            draw_rect(obstacles, fr, 1);
+            //draw_rect(obstacles, fr, 1);
         }
         
         blob.FillBlob(obstacles, CV_RGB(0,255,0));
@@ -314,14 +314,14 @@ static IplImage *visibility_mark_obstacle_boxes(IplImage *obstacles)
         printf("%d - x %f to %f, y %f to %f\n", i, blob.MinX(), blob.MaxX(), blob.MinY(), blob.MaxY());        
         
         cvBoxPoints(box, pt);
-        obstacleboxes.push_back(box);
+        //obstacleboxes.push_back(box);
         
-        for (int j = 0; j < 4; j++) {
-            cvLine(obstacles, cvPointFrom32f(pt[j]), cvPointFrom32f(pt[(j+1)%4]), CV_RGB(0, 0, 255));
-        }
+        //for (int j = 0; j < 4; j++) {
+        //    cvLine(obstacles, cvPointFrom32f(pt[j]), cvPointFrom32f(pt[(j+1)%4]), CV_RGB(0, 0, 255));
+        //}
     }
     
-    return obstacles;
+    //return obstacles;
 }
 
 static VisiLibity::Point move_point_away(VisiLibity::Point p)
@@ -364,16 +364,16 @@ done:
 // input - visibility_mark_obstacle_boxes
 // output - visibility graph drawn over image
 // fills out global variable visibility
-static IplImage *visibility_make_visibility_graph(IplImage *obstacle_image)
+static void visibility_make_visibility_graph(int width, int height)
 {
     using namespace VisiLibity;
     
     {
         Point rp[4] = {
             Point(0, 0),
-            Point(obstacle_image->width, 0),
-            Point(obstacle_image->width, obstacle_image->height),
-            Point(0, obstacle_image->height)};
+            Point(width, 0),
+            Point(width, height),
+            Point(0, height)};
         std::vector<Point> rpv(rp, rp+4);
         Polygon boundary(rpv);
         
@@ -401,7 +401,7 @@ static IplImage *visibility_make_visibility_graph(IplImage *obstacle_image)
     //printf("vis valid %d area %f dia %f\n", visibility->is_valid(), visibility->area(), visibility->diameter());
     
     //printf("drawing visibility graph\n");
-    
+    /*
     IplImage *visibility_image = cvCloneImage(obstacle_image);
     
     int nlines = 0, nvertices = 0;
@@ -431,13 +431,14 @@ static IplImage *visibility_make_visibility_graph(IplImage *obstacle_image)
     printf("%d vertices, %d edges in graph\n", nvertices, nlines);
     
     return visibility_image;
+    */
 }
 
 // input - visibility_make_visibility_graph
 // global variables robotPos.x, robotPos.y, targetPos.x, targetPos.y
 // output - image with path drawn on it
 // global variable path_to_goal
-static IplImage *visibility_find_robot_path(IplImage *visibility_graph_image)
+static void visibility_find_robot_path()
 {
     using namespace VisiLibity;
 
@@ -462,10 +463,10 @@ static IplImage *visibility_find_robot_path(IplImage *visibility_graph_image)
         
         printf("p #%d: x %d y %d -> x %d y %d\n", i, cp1.x, cp1.y, cp2.x, cp2.y);
         
-        cvLine(visibility_graph_image, cp1, cp2, CV_RGB(255, 255, 255), 4, 8, 0);
+        //cvLine(visibility_graph_image, cp1, cp2, CV_RGB(255, 255, 255), 4, 8, 0);
     }
     
-    return visibility_graph_image;
+    //return visibility_graph_image;
 }
 
 IplImage* img = NULL;
@@ -509,7 +510,7 @@ void setBackground(){
         key = cvWaitKey(30);
         img = fetch_camera_image();
 
-        cvShowImage("Display", img);
+        //cvShowImage("Display", img);
         if(key == '1')
             break;
         cvReleaseImage(&img);
@@ -527,7 +528,7 @@ void setObstacleBackground(){
         key = cvWaitKey(30);
         img = fetch_camera_image();
 
-        cvShowImage("Display", img);
+        //cvShowImage("Display", img);
         if(key == '2')
             break;
 		cvReleaseImage(&img);
@@ -564,10 +565,8 @@ void setObstacleBackground(){
     cvErode(img, img);
     cvDilate(img, img);
     
-    img = visibility_mark_obstacle_boxes(img);
-    img = visibility_make_visibility_graph(img);
-    
-    visibility_image = img;
+    visibility_mark_obstacle_boxes(img);
+    visibility_make_visibility_graph(img->width, img->height);    
 }
 
 int HSV_filter1(int h, int s, int v, int threshold) {
@@ -891,7 +890,7 @@ static int find_objects(bool find_fruit)
         localCount++;
     }
     
-    cvShowImage("Output Image - Blob Demo", input);
+    //cvShowImage("Output Image - Blob Demo", input);
     cvWaitKey(3);
 
     cvReleaseImage(&input);
@@ -912,7 +911,7 @@ static void idleAwaitingObjects()
         key = cvWaitKey(30);
         img = fetch_camera_image();
         
-        cvShowImage("Display", img);
+        //cvShowImage("Display", img);
         cvReleaseImage(&img);
         if(key == '3')
             break;
@@ -929,7 +928,7 @@ void processCamera()
         setObstacleBackground();
 	}
     
-    cvShowImage("visibility graph", visibility_image);
+    //cvShowImage("visibility graph", visibility_image);
     cvWaitKey(3);
 
     if (!placed) {
@@ -941,8 +940,8 @@ void processCamera()
         found = 1;
         originalRobotPos = robotPos;
         targetPos = fruitPos;
-        visibility_image = visibility_find_robot_path(visibility_image);
-        cvShowImage("visibility graph", visibility_image);
+        visibility_find_robot_path();
+        //cvShowImage("visibility graph", visibility_image);
         cvWaitKey(3);
         
         rovio_camera_height(middle);
@@ -956,7 +955,7 @@ void processCamera()
         rovio_turn(TurnLeft, 10);
 
         targetPos = originalRobotPos;
-        visibility_find_robot_path(NULL);
+        visibility_find_robot_path();
         drive_to_goal();
         
     }
