@@ -14,6 +14,8 @@
 #endif
 using namespace std;
 
+#define dprintf if (DEBUG) printf
+
 static float angle_towards(int x1, int y1, int x2, int y2)
 {
     int xv = x2 - x1;
@@ -49,7 +51,7 @@ static int compare_angle(float a, float b)
             ret = (360 + a) >= b;
     }
     
-    printf("a %f b %f ccw %d\n", a, b, ret);
+    dprintf("a %f b %f ccw %d\n", a, b, ret);
     
     return ret;
 }
@@ -81,7 +83,7 @@ static void robot_turn_from_to(float curAngle, float wantAngle)
     fn = diff / 15.;
     n = fn + .5;
     
-    printf(">> turn %f -> %f (%f degrees, dir %d = %f turns = cmd %d)\n", curAngle, wantAngle, diff, (int)turn, fn, n);
+    dprintf(">> turn %f -> %f (%f degrees, dir %d = %f turns = cmd %d)\n", curAngle, wantAngle, diff, (int)turn, fn, n);
     rovio_turn(turn, n);
     
     do {
@@ -99,25 +101,25 @@ static void robot_turn_from_to(float curAngle, float wantAngle)
         }
 
         if (abs(lastCurAngle - curAngle) > 60.) {
-            printf("-- noisy orientation reading, retry\n");
+            dprintf("-- noisy orientation reading, retry\n");
             continue;
         }
         
         if (turn != cturn) {
-            printf("-- overturned (turn = %d cturn = %d) (%f -> %f), break\n", turn, cturn, curAngle, wantAngle);
+            dprintf("-- overturned (turn = %d cturn = %d) (%f -> %f), break\n", turn, cturn, curAngle, wantAngle);
             break;
         }
         
         if ((abs(curAngle - wantAngle) < 10 || abs((360+curAngle) - wantAngle) < 10)) {
-            printf("-- can't improve turn, break (cur = %f want = %f)\n", curAngle, wantAngle);
+            dprintf("-- can't improve turn, break (cur = %f want = %f)\n", curAngle, wantAngle);
             break;
         }
         
-        printf("correction turn %f -> %f (%f degrees, dir %d)\n", curAngle, wantAngle, diff, (int)turn);
+        dprintf("correction turn %f -> %f (%f degrees, dir %d)\n", curAngle, wantAngle, diff, (int)turn);
         rovio_turn_small(turn);
     } while (1);
     
-    printf("<< turned, final angle %f wanted %f\n", curAngle, wantAngle);
+    dprintf("<< turned, final angle %f wanted %f\n", curAngle, wantAngle);
 }
 
 static int distance(int x1, int y1, int x2, int y2)
@@ -138,7 +140,7 @@ static void robot_drive_to(int wantX, int wantY)
     cdistance = distance(robotPos.x, robotPos.y, wantX, wantY);
 
     do {
-        printf("distance = %f, driving forward\n", sqrt(cdistance));
+        dprintf("distance = %f, driving forward\n", sqrt(cdistance));
         rovio_drive(5, DirForward);
                 
         // wait to find the robot
@@ -151,7 +153,7 @@ static void robot_drive_to(int wantX, int wantY)
             last_distance = cdistance;
 
         cdistance = distance(robotPos.x, robotPos.y, wantX, wantY);
-        printf("distance now = %f\n", sqrt(cdistance));
+        dprintf("distance now = %f\n", sqrt(cdistance));
     } while ((last_distance - cdistance) > 10);
     
     printf("<< stopped, distance increased to %f (pos %d, %d)\n", sqrt(cdistance), robotPos.x, robotPos.y);
@@ -207,7 +209,7 @@ static void drive_to_point(VisiLibity::Point p)
         
         // diff should be ~= 180 degrees if we can stop
         should_redo_turn = abs(diff - 180.) >= 10. && abs(diff) >= 10.;
-        printf("-- after stopping, old angle = %f, new angle = %f, should be inverse, retry %d, didDrive %d\n", angle, new_angle, should_redo_turn, did_drive);
+        dprintf("-- after stopping, old angle = %f, new angle = %f, should be inverse, retry %d, didDrive %d\n", angle, new_angle, should_redo_turn, did_drive);
     } while (should_redo_turn);
 }
 
@@ -282,7 +284,7 @@ static void visibility_mark_obstacle_boxes(IplImage *obstacles)
     blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 50);
     blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_LESS, 250000);
     
-    blobs.PrintBlobs("/dev/stdout");
+    if (DEBUG) blobs.PrintBlobs("/dev/stdout");
     
     for (int i = 0; i < blobs.GetNumBlobs(); i++)
     {
@@ -310,8 +312,8 @@ static void visibility_mark_obstacle_boxes(IplImage *obstacles)
         }
         
         blob.FillBlob(obstacles, CV_RGB(0,255,0));
-        printf("blob %d has %d edges\n", i, blob.edges->total);
-        printf("%d - x %f to %f, y %f to %f\n", i, blob.MinX(), blob.MaxX(), blob.MinY(), blob.MaxY());        
+        dprintf("blob %d has %d edges\n", i, blob.edges->total);
+        dprintf("%d - x %f to %f, y %f to %f\n", i, blob.MinX(), blob.MaxX(), blob.MinY(), blob.MaxY());        
         
         cvBoxPoints(box, pt);
         //obstacleboxes.push_back(box);
@@ -461,7 +463,7 @@ static void visibility_find_robot_path()
         cp1.x = p.x(); cp1.y = p.y();
         cp2.x = p1.x();cp2.y = p1.y();
         
-        printf("p #%d: x %d y %d -> x %d y %d\n", i, cp1.x, cp1.y, cp2.x, cp2.y);
+        dprintf("p #%d: x %d y %d -> x %d y %d\n", i, cp1.x, cp1.y, cp2.x, cp2.y);
         
         //cvLine(visibility_graph_image, cp1, cp2, CV_RGB(255, 255, 255), 4, 8, 0);
     }
@@ -650,7 +652,7 @@ static int find_objects(bool find_fruit)
     CvPoint Left, Right;
     
     input = fetch_camera_image();
-    cvDestroyWindow("Display");
+    //cvDestroyWindow("Display");
     cvWaitKey(3);
     
 	img = cvCloneImage(input);
@@ -876,6 +878,7 @@ static int find_objects(bool find_fruit)
     */
  
    // cvNamedWindow("Output Image - Blob Demo", 1);
+/*
     {
         static int localCount = 0;
         if(localCount % 5 == 0 && 0){
@@ -889,15 +892,15 @@ static int find_objects(bool find_fruit)
         }
         localCount++;
     }
-    
-    //cvShowImage("Output Image - Blob Demo", input);
+  */  
+    cvShowImage("Output Image - Blob Demo", input);
     cvWaitKey(3);
 
     cvReleaseImage(&input);
     
     int sdistance = distance(fruitPos.x, fruitPos.y, robotPos.x, robotPos.y);
     
-    printf("found robot %d (%d,%d), angle %d, fruit %d (%d,%d), dist %f\n", found_robot, robotPos.x, robotPos.y, robotOrientation, found_fruit, fruitPos.x, fruitPos.y, sqrt(sdistance));
+    dprintf("found robot %d (%d,%d), angle %d, fruit %d (%d,%d), dist %f\n", found_robot, robotPos.x, robotPos.y, robotOrientation, found_fruit, fruitPos.x, fruitPos.y, sqrt(sdistance));
     
     return found_robot==2 && (!find_fruit || (found_fruit && (sdistance > 50*50)));
 }
@@ -946,11 +949,10 @@ void processCamera()
         
         rovio_camera_height(middle);
         
-        printf("--\ndrive to fruit\n\n");
+        dprintf("--\ndrive to fruit\n\n");
         drive_to_goal();
         
-        
-        printf("--\ndrive back\n\n");
+        dprintf("--\ndrive back\n\n");
         rovio_camera_height(low);
         rovio_turn(TurnLeft, 10);
 

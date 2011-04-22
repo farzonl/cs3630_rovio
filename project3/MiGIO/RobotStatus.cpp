@@ -22,6 +22,20 @@ using namespace std;
 #include "RobotStatus.h"
 #include "RobotInterface.h"
 
+static char robotImage[] = "Data/RovioHeader.jpg";
+
+static int numActuators = 2;
+static int actuatorValues[] = {0,0};
+static const char* actuatorNames[] = {" 0)Cmd"," 1)Speed"};
+
+static int numBinarySensors = 0;
+static bool binarySensors[] = {0};
+static char* binaryNames[] = {0};
+
+static int numContSensors = 3;
+static int contSensors[] = {0,0,0};
+static const char* contNames[] = {" 0)X"," 1)Y"," 2)THETA"};
+
 IplImage *statusImg;
 CvFont *fontTitles,*fontText;
 
@@ -119,7 +133,7 @@ void updateStatusWindow(){
 	  for(int i=0; i<numBinarySensors; i++){
 		  row = i%7;
 		  col = i/7;
-		  int yadd = 25;
+//		  int yadd = 25;
 
 		  cvPutText(statusImg,binaryNames[i], cvPoint(xleft2+row*textwidth, ybinary+yheader*2+col*ytext*2), fontText, cvScalar(150, 150, 150, 0));
 		  if(binarySensors[i]!=0){

@@ -18,8 +18,8 @@ void robotReadSensors(){
 void robotController(){
     static long long x = 0;
     x++;
-    actuatorValues[0] = ((x/10)%2) ? 1 : 2;
-    actuatorValues[1] = 5;
+    //actuatorValues[0] = ((x/10)%2) ? 1 : 2;
+    //actuatorValues[1] = 5;
 }
 
 void rovio_drive(int n, RovioDirection direction)
