@@ -49,6 +49,7 @@ void rovio_drive(int n, RovioDirection direction);
 // direction = Left or Right
 // n = 3 for 45, 7 for 90, technically in increments of 20 degrees
 void rovio_turn(horizontal_class direction, int n);
+void rovio_turn_small(horizontal_class direction);
 void rovio_camera_height(vertical_class height);
 
 #endif

@@ -36,11 +36,23 @@ static int find_objects(bool find_fruit);
 // 0 if b is CW of a
 static int compare_angle(float a, float b)
 {
-    float d = b - a;
-    if (d <= 180. && d > 0) {
-        return 1;
+    float ccw_distance, cw_distance;
+    int ret;
+    
+    if ((a <= 180 && b <= 180) || (a >= 180 && b >= 180)) {
+        // b, a both top
+        // ccw - b > a
+        ret = b > a;
+    } else {
+        if (b >= a) {
+            ret = (360 + b) >= a;
+        } else
+            ret = (360 + a) >= b;
     }
-    return 0;
+    
+    printf("a %f b %f ccw %d\n", a, b, ret);
+    
+    return ret;
 }
 
 static void robot_turn_from_to(float curAngle, float wantAngle)
@@ -48,24 +60,29 @@ static void robot_turn_from_to(float curAngle, float wantAngle)
     float maxA, minA;
     horizontal_class turn;
     float diff, fn;
-    int n;
+    int n, after_small_turn=0;
+    float lastCurAngle = curAngle;
     
     if (compare_angle(curAngle, wantAngle)) {
         turn = TurnLeft;
-        maxA = wantAngle;
-        minA = curAngle;
     } else {
         turn = TurnRight;
-        maxA = curAngle;
-        minA = wantAngle;
+
     }
     
+    if (curAngle > wantAngle) {
+        maxA = curAngle;
+        minA = wantAngle;
+    } else {
+        maxA = wantAngle;
+        minA = curAngle;
+    }
     diff = maxA - minA;
 
     fn = diff / 15.;
     n = fn + .5;
     
-    printf(">> turn %f -> %f (%f degrees dir %d = %f turns = cmd %d)\n", curAngle, wantAngle, diff, (int)turn, fn, n);
+    printf(">> turn %f -> %f (%f degrees, dir %d = %f turns = cmd %d)\n", curAngle, wantAngle, diff, (int)turn, fn, n);
     rovio_turn(turn, n);
     
     do {
@@ -74,23 +91,31 @@ static void robot_turn_from_to(float curAngle, float wantAngle)
         // wait to find the robot
         while (find_objects(false) == false)
             ;
+        lastCurAngle = curAngle;
         curAngle = robotOrientation;
         if (compare_angle(curAngle, wantAngle)) {
             cturn = TurnLeft;
         } else {
             cturn = TurnRight;
         }
+
+        if (abs(lastCurAngle - curAngle) > 60.) {
+            printf("-- noisy orientation reading, retry\n");
+            continue;
+        }
         
-        // FIXME make angles_are_closer_than(...) function
-        if ((abs(curAngle - wantAngle) <= 10 || abs((360+curAngle) - wantAngle) <= 10))
+        if (turn != cturn) {
+            printf("-- overturned (turn = %d cturn = %d) (%f -> %f), break\n", turn, cturn, curAngle, wantAngle);
             break;
+        }
         
-        if (turn == TurnLeft && wantAngle <= curAngle)
+        if ((abs(curAngle - wantAngle) < 10 || abs((360+curAngle) - wantAngle) < 10)) {
+            printf("-- can't improve turn, break\n", curAngle, wantAngle);
             break;
-        if (turn == TurnRight && wantAngle >= curAngle)
-            break;
-        printf("correction turn\n");
-        rovio_turn(turn, 1);
+        }
+        
+        printf("correction turn %f -> %f (%f degrees, dir %d)\n", curAngle, wantAngle, diff, (int)turn);
+        rovio_turn_small(turn);
     } while (1);
     
     printf("<< turned, final angle %f wanted %f\n", curAngle, wantAngle);
@@ -107,7 +132,7 @@ static int distance(int x1, int y1, int x2, int y2)
 // just drive forwards until past it
 static void robot_drive_to(int wantX, int wantY)
 {
-    int cdistance, last_distance;
+    int cdistance, last_distance = INT_MAX;
     
     printf(">> drive from %d,%d to %d,%d\n", robotPos.x, robotPos.y, wantX, wantY);
     
@@ -122,10 +147,13 @@ static void robot_drive_to(int wantX, int wantY)
         while (find_objects(false) == false)
             ;
         
-        last_distance = cdistance;
+        // avoid iterating forever due to noise
+        if (abs(last_distance - cdistance) > 10)
+            last_distance = cdistance;
+
         cdistance = distance(robotPos.x, robotPos.y, wantX, wantY);
         printf("distance now = %f\n", sqrt(cdistance));
-    } while (cdistance <= last_distance);
+    } while ((last_distance - cdistance) > 10);
     
     printf("<< stopped, distance increased to %f (pos %d, %d)\n", sqrt(cdistance), robotPos.x, robotPos.y);
 }
@@ -162,7 +190,7 @@ static void drive_to_point(VisiLibity::Point p)
         } while (0);
         
         do {
-            if (distance(cur_x,cur_y,next_x,next_y) <= 100*100)
+            if (distance(cur_x,cur_y,next_x,next_y) <= 60*60)
                 break;
             
             did_drive = 1;
@@ -170,14 +198,16 @@ static void drive_to_point(VisiLibity::Point p)
             robot_drive_to(next_x, next_y);
         } while (0);
         
+        if (!did_drive) break;
+        
         // check the angle of the distance
         // if it flipped, we crossed the center point
         // if it didn't, we drove off somewhere - turn around and try again
         float new_angle = angle_towards(robotPos.x, robotPos.y, next_x, next_y);
-        float inverse_new_angle = 360. - new_angle;
+        float diff = new_angle - angle;
         
-        // FIXME make angles_are_closer_than(...) function
-        should_redo_turn = !(abs(inverse_new_angle - angle) < 45 || abs((360+inverse_new_angle) - angle) < 45);
+        // diff should be ~= 180 degrees if we can stop
+        should_redo_turn = abs(diff - 180.) >= 10. && abs(diff) >= 10.;
         printf("-- after stopping, old angle = %f, new angle = %f, should be inverse, retry %d, didDrive %d\n", angle, new_angle, should_redo_turn, did_drive);
     } while (should_redo_turn);
 }
@@ -324,8 +354,8 @@ done:
     cxv /= r;
     cyv /= r;
     
-    cxv *= 35;
-    cyv *= 35;
+    cxv *= 50;
+    cyv *= 50;
     
     return VisiLibity::Point(p.x() + cxv, p.y() + cyv);
 }
@@ -449,14 +479,35 @@ char cameraURL[20][50000];
 //std::vector<CvPoint> robotPos;
 int imageCount = 0;
 
+static IplImage *fetch_camera_image()
+{
+    IplImage *img;
+#if 1
+    http_fetch(cameraURL[0],"Data/Camera0.jpg");
+    img=cvLoadImage("Data/Camera0.jpg");
+    
+    cvReleaseImage(&img);
+    http_fetch(cameraURL[0],"Data/Camera0.jpg");
+    img=cvLoadImage("Data/Camera0.jpg");
+#else
+    static CvCapture *cap = cvCaptureFromCAM(1);
+    cvGrabFrame(cap);
+    IplImage *img2 = cvQueryFrame(cap);
+    img = cvCloneImage(img2);
+    cvReleaseImage(&img2);
+#endif
+    
+    return img;
+}
+
 void setBackground(){
 	int key;
 	IplImage* img = NULL;
     
 	while(1){
         key = cvWaitKey(30);
-        http_fetch(cameraURL[0],"Data/Camera0.jpg");
-        img=cvLoadImage("Data/Camera0.jpg");
+        img = fetch_camera_image();
+
         cvShowImage("Display", img);
         if(key == '1')
             break;
@@ -473,9 +524,9 @@ void setObstacleBackground(){
 
 	while(1){
         key = cvWaitKey(30);
-        http_fetch(cameraURL[0],"Data/Camera0.jpg");
-        img=cvLoadImage("Data/Camera0.jpg");
-        cvShowImage("Display" , img);
+        img = fetch_camera_image();
+
+        cvShowImage("Display", img);
         if(key == '2')
             break;
 		cvReleaseImage(&img);
@@ -598,12 +649,9 @@ static int find_objects(bool find_fruit)
 
     CvPoint Left, Right;
     
-	http_fetch(cameraURL[0],"Data/Camera0.jpg");
-    //	cvReleaseImage(&images[0]);
-	input=cvLoadImage("Data/Camera0.jpg");
-	//cvShowImage(cameraName[0], input);
-    
+    input = fetch_camera_image();
     cvDestroyWindow("Display");
+    cvWaitKey(3);
     
 	img = cvCloneImage(input);
 	//hsv_img = cvCloneImage(img);
@@ -861,8 +909,8 @@ static void idleAwaitingObjects()
     
 	while(1){
         key = cvWaitKey(30);
-        http_fetch(cameraURL[0],"Data/Camera0.jpg");
-        img=cvLoadImage("Data/Camera0.jpg");
+        img = fetch_camera_image();
+        
         cvShowImage("Display", img);
         cvReleaseImage(&img);
         if(key == '3')
@@ -881,6 +929,7 @@ void processCamera()
 	}
     
     cvShowImage("visibility graph", visibility_image);
+    cvWaitKey(3);
 
     if (!placed) {
         idleAwaitingObjects();
@@ -893,15 +942,18 @@ void processCamera()
         targetPos = fruitPos;
         visibility_image = visibility_find_robot_path(visibility_image);
         cvShowImage("visibility graph", visibility_image);
+        cvWaitKey(3);
         
         rovio_camera_height(middle);
         
         printf("--\ndrive to fruit\n\n");
         drive_to_goal();
         
-        rovio_camera_height(low);
         
         printf("--\ndrive back\n\n");
+        rovio_camera_height(low);
+        rovio_turn(TurnLeft, 10);
+
         targetPos = originalRobotPos;
         visibility_find_robot_path(NULL);
         drive_to_goal();
