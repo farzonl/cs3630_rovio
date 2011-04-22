@@ -22,10 +22,10 @@ void robotController();
 void robotSendActuators();
 void robotWait();
 
-typedef enum horizontal_class {
+typedef enum RovioTurn {
     TurnLeft = 0,
     TurnRight = 2
-} horizontal_class;
+} RovioTurn;
 
 typedef enum RovioDirection {
     DirNone = 0,
@@ -48,8 +48,8 @@ typedef enum vertical_class {
 void rovio_drive(int n, RovioDirection direction);
 // direction = Left or Right
 // n = 3 for 45, 7 for 90, technically in increments of 20 degrees
-void rovio_turn(horizontal_class direction, int n);
-void rovio_turn_small(horizontal_class direction);
+void rovio_turn(RovioTurn direction, int n);
+void rovio_turn_small(RovioTurn direction);
 void rovio_camera_height(vertical_class height);
 
 #endif

@@ -58,7 +58,7 @@ static int compare_angle(float a, float b)
 static void robot_turn_from_to(float curAngle, float wantAngle)
 {
     float maxA, minA;
-    horizontal_class turn;
+    RovioTurn turn;
     float diff, fn;
     int n, after_small_turn=0;
     float lastCurAngle = curAngle;
@@ -86,7 +86,7 @@ static void robot_turn_from_to(float curAngle, float wantAngle)
     rovio_turn(turn, n);
     
     do {
-        horizontal_class cturn;
+        RovioTurn cturn;
 
         // wait to find the robot
         while (find_objects(false) == false)

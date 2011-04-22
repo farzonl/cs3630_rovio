@@ -40,7 +40,7 @@ void rovio_drive(int n, RovioDirection direction)
     sleep(1);
 }
 
-void rovio_turn(horizontal_class direction, int n)
+void rovio_turn(RovioTurn direction, int n)
 {
     char buf[1024];
         
@@ -53,7 +53,7 @@ void rovio_turn(horizontal_class direction, int n)
     sleep(1);
 }
 
-void rovio_turn_small(horizontal_class direction)
+void rovio_turn_small(RovioTurn direction)
 {
     char buf[1024];
     
