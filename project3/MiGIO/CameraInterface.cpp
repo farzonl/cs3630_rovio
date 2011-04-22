@@ -1002,5 +1002,9 @@ void *cameraThread(void *arg)
 		usleep(100);
 #endif
 	}
+	
+#ifndef _WIN32
+	return NULL;
+#endif
 }
 
