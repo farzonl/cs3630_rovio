@@ -16,6 +16,26 @@ using namespace std;
 
 #define dprintf if (DEBUG) printf
 
+CvMemStorage *gStorage = NULL;
+static std::vector<CvBox2D> obstacleboxes;
+static VisiLibity::Environment *visibility;
+static std::vector<VisiLibity::Point> path_to_goal;
+
+CvPoint fruitPos, robotPos;
+CvPoint targetPos, originalRobotPos;
+int robotOrientation; // in degrees
+
+//IplImage* img = NULL;
+IplImage* background = NULL;
+IplImage* ObstacleBackground = NULL;
+//IplImage* visibility_image = NULL;
+
+int numCameras=0;
+char cameraName[20][1000];
+char cameraURL[20][50000];
+
+//int imageCount = 0;
+
 static float angle_towards(int x1, int y1, int x2, int y2)
 {
     int xv = x2 - x1;
@@ -27,10 +47,6 @@ static float angle_towards(int x1, int y1, int x2, int y2)
     res = fmodf(res, 2*M_PI);
     return res * (180./M_PI);
 }
-
-CvPoint fruitPos, robotPos;
-CvPoint targetPos, originalRobotPos;
-int robotOrientation;
 
 static int find_objects(bool find_fruit);
 
@@ -158,12 +174,6 @@ static void robot_drive_to(int wantX, int wantY)
     
     printf("<< stopped, distance increased to %f (pos %d, %d)\n", sqrt(cdistance), robotPos.x, robotPos.y);
 }
-
-CvMemStorage *gStorage = NULL;
-static std::vector<CvBox2D> obstacleboxes;
-static VisiLibity::Environment *visibility;
-
-static std::vector<VisiLibity::Point> path_to_goal;
 
 static void drive_to_point(VisiLibity::Point p)
 {
@@ -470,18 +480,6 @@ static void visibility_find_robot_path()
     
     //return visibility_graph_image;
 }
-
-IplImage* img = NULL;
-int numCameras=0;
-IplImage* background = NULL;
-IplImage* ObstacleBackground = NULL;
-IplImage* visibility_image = NULL;
-char cameraName[20][1000];
-char cameraURL[20][50000];
-
-//std::vector<CvPoint> path;
-//std::vector<CvPoint> robotPos;
-int imageCount = 0;
 
 static IplImage *fetch_camera_image()
 {
