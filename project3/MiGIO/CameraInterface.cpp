@@ -12,7 +12,6 @@
 #ifndef _WIN32
 #include <unistd.h>
 #endif
-using namespace std;
 
 #define dprintf if (DEBUG) printf
 
