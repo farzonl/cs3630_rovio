@@ -37,9 +37,6 @@ static ObjectPos find_objects(bool find_fruit);
 // loop until find_objects finds the robot
 static ObjectPos find_robot();
 
-//while ((pos = find_objects(false)).found == false)
-//    ;
-
 #pragma mark -- movement
 
 static int distance(int x1, int y1, int x2, int y2)
@@ -778,18 +775,7 @@ static ObjectPos find_objects(bool find_fruit)
         CBlob robBlobArea = robBlobs.GetBlob(i);
         CvBox2D BlobEllipse = robBlobArea.GetEllipse();
         CvPoint centrum = cvPoint(BlobEllipse.center.x, BlobEllipse.center.y);
-        if((centrum.x != 0) &&( centrum.y != 0)){
-            //int passes = 1;
-            //for(int k = 0; k < robotPos.size(); k ++ ){
-            //	int passes = 1;
-            //	double TempDist = sqrt((double)((centrum.x - robotPos.at(k).x)*(centrum.x - robotPos.at(k).x))
-            //		+ ((centrum.y - robotPos.at(k).y)*(centrum.y - robotPos.at(k).y)));
-            //	if(TempDist < 10){
-            //	 passes = false;
-            //	}
-            //}
-            //robotPos.push_back(centrum);
-        }
+
         Left = centrum;
         if (found_robot==1)
             found_robot++;
@@ -826,33 +812,6 @@ static ObjectPos find_objects(bool find_fruit)
         
         pos.robotPos.x = (int)(Right.x + Left.x)/2;
         pos.robotPos.y = (int)(Right.y + Left.y)/2;
-        /*
-        double fruitAngle = sqrt(distance(fruitPos.x, fruitPos.y, robotPos.x, robotPos.y));
-        fruitAngle = acos((fruitPos.x - robotPos.x)/fruitAngle) * (180./M_PI);
-
-        if(((fruitPos.y - robotPos.y) > 0) && ((fruitPos.x-robotPos.x) > 0)){
-            fruitAngle = 360 -fruitAngle;
-        }
-        else if(((fruitPos.y - robotPos.y > 0) && ((fruitPos.x - robotPos.x) < 0))){
-            float rho = 180 - fruitAngle;
-            fruitAngle = fruitAngle + 2*rho;
-        }
-        
-        int difference = (fruitAngle - robotOrientation);
-        if(difference > 180){
-            difference = difference - 360;
-        }
-        if(difference < -180){
-            difference = difference + 360;
-        }
-        */
-        /*
-        CvPoint relativeFruitPos;
-        relativeFruitPos.x = (int)cos((double)((difference/360)*M_PI)) * 8;
-        relativeFruitPos.y = (int)sin((double)((difference/360)*M_PI)) * 8;
-        */
-        
-        //printf("The orientation is: %d \n", difference);
     }
  
     blobs.ClearBlobs();
