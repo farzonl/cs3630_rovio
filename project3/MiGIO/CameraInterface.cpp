@@ -1021,11 +1021,11 @@ static ObjectPos find_objects(bool find_fruit)
         pos.robotPos.y = (int)(Right.y + Left.y)/2;
     }
     
-	 int drawx = pos.robotPos.x + sin((double)pos.robotOrientation*50);
-     int drawy = pos.robotPos.y - cos((double)pos.robotOrientation*50);
-     cvDrawLine(input, pos.robotPos, cvPoint(drawx,drawy),CV_RGB(0, 250,250));
+	 int drawx = pos.robotPos.x + sin((double)(pos.robotOrientation/ 180.0 * PI))*50);
+     int drawy = pos.robotPos.y - cos((double)(pos.robotOrientation/180*PI))*50);
+     cvLine(input, pos.robotPos, cvPoint(drawx,drawy),CV_RGB(0, 250,250));
 
-	/* if((goal1.x != 0)&&(goal1.y != 0))
+	 /*if((goal1.x != 0)&&(goal1.y != 0))
 	 {
 		CvPoint p = cvPoint(drawx,drawy);
 		 TriangleAlgorithm(&pos.robotPos,&p,&goal1);
@@ -1226,8 +1226,8 @@ void giveOrders()
 void moveToPoint(CvPoint p, ObjectPos pos){
 	CvPoint arbitrary;
 	while((abs(pos.robotPos.x - p.x) > 20)&&(abs(pos.robotPos.y - p.y)> 20)){
-		arbitrary.x = (int)(sin((double)pos.robotOrientation)*10 + pos.robotPos.x);
-		arbitrary.y = (int)(pos.robotPos.y - cos((double)pos.robotOrientation)*10);
+		arbitrary.x = (int)(sin((double)pos.robotOrientation/180*PI)*20 + pos.robotPos.x);
+		arbitrary.y = (int)(pos.robotPos.y - cos((double)pos.robotOrientation/180*PI)*20);
 		CvPoint Robot = pos.robotPos;
 		CvPoint orientation = arbitrary;
 		CvPoint Dest = p;
