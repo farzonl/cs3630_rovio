@@ -541,6 +541,7 @@ static void setBackground(){
 	cvReleaseImage(&img);
 }
 
+#define pixRGB(img, x, y, c) ((uchar *)(img->imageData + y*img->widthStep))[x*img->nChannels + c]
 
 static void resetGoalObstacleBackground(CvPoint robot, CvPoint enemy, CvPoint goal1, CvPoint goal2){
     int key, backr, backg, backb;
@@ -563,38 +564,34 @@ static void resetGoalObstacleBackground(CvPoint robot, CvPoint enemy, CvPoint go
 
 	for(int i = 0; i < img->height; i++) {
 		for(int j = 0; j < img->width; j++) {
-			int r = ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 2];
-            int g = ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 1];
-            int b = ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 0];
-			backr = ((uchar *)(background->imageData + i*img->widthStep))[j*img->nChannels + 2];
-			backg = ((uchar *)(background->imageData + i*img->widthStep))[j*img->nChannels + 1];
-			backb = ((uchar *)(background->imageData + i*img->widthStep))[j*img->nChannels + 0];
+			int r, g, b;
+			r = pixRGB(img, j, i, 2);
+			g = pixRGB(img, j, i, 1);
+			b = pixRGB(img, j, i, 0);
+			
+			backr = pixRGB(background, j, i, 2);
+			backr = pixRGB(background, j, i, 1);
+			backr = pixRGB(background, j, i, 0);			
+
             //now we have pulled out the rgb values in the original background and the current image.
 			if((i>goal1.x-25)&&(i<goal1.x+25)&&(i>goal1.y-25)&&(i<goal1.y+25)||
 				(i>goal2.x-25)&&(i<goal2.x+25)&&(i>goal2.y-25)&&(i<goal2.y+25)){
 				//if the pixel is near the goal, we just copy in our old goal images
-					
-					int oldr = ((uchar *)(temp->imageData + i*temp->widthStep))[j*temp->nChannels + 2];
-					int oldg = ((uchar *)(temp->imageData + i*temp->widthStep))[j*temp->nChannels + 1];
-					int oldb = ((uchar *)(temp->imageData + i*temp->widthStep))[j*temp->nChannels + 0];
-
-					((uchar *)(GoalObstacleBackground->imageData + i*GoalObstacleBackground->widthStep))[j*GoalObstacleBackground->nChannels + 2] = oldr;
-					((uchar *)(GoalObstacleBackground->imageData + i*GoalObstacleBackground->widthStep))[j*GoalObstacleBackground->nChannels + 1] = oldg;
-					((uchar *)(GoalObstacleBackground->imageData + i*GoalObstacleBackground->widthStep))[j*GoalObstacleBackground->nChannels + 0] = oldb;	
+					pixRGB(GoalObstacleBackground, j, i, 2) = pixRGB(temp, j, i, 2);
+					pixRGB(GoalObstacleBackground, j, i, 1) = pixRGB(temp, j, i, 1);
+					pixRGB(GoalObstacleBackground, j, i, 0) = pixRGB(temp, j, i, 0);
 			}	
 			else if((i>robot.x-25)&&(i<robot.x+25)&&(i>robot.y-25)&&(i<robot.y+25)||
 				(i>enemy.x-25)&&(i<enemy.x+25)&&(i>enemy.y-25)&&(i<enemy.y+25))
 				//(i>goal1.x-25)&&(i<goal1.x+25)&&(i>goal1.y-25)&&(i<goal1.y+25)||
 				//(i>goal2.x-25)&&(i<goal2.x+25)&&(i>goal2.y-25)&&(i<goal2.y+25))
 				{
-            
-				((uchar *)(GoalObstacleBackground->imageData + i*GoalObstacleBackground->widthStep))[j*GoalObstacleBackground->nChannels + 2] = backr;
-				((uchar *)(GoalObstacleBackground->imageData + i*GoalObstacleBackground->widthStep))[j*GoalObstacleBackground->nChannels + 1] = backg;
-				((uchar *)(GoalObstacleBackground->imageData + i*GoalObstacleBackground->widthStep))[j*GoalObstacleBackground->nChannels + 0] = backb;				
-				
-			}
-			else{
-			
+            		pixRGB(GoalObstacleBackground, j, i, 2) = backr;
+					pixRGB(GoalObstacleBackground, j, i, 1) = backg;
+					pixRGB(GoalObstacleBackground, j, i, 0) = backb;
+				}
+			else
+			{
 				int diff = (r-backr)*(r-backr) + (g-backg)*(g-backg)+ (b-backb)*(b-backb);
             
 				diff = sqrt((double)diff);
@@ -637,34 +634,43 @@ static void setGoalObstacleBackground(){
 
 	for(int i = 0; i < img->height; i++) {
 		for(int j = 0; j < img->width; j++) {
-			int r = ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 2];
-            int g = ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 1];
-            int b = ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 0];
-			backr = ((uchar *)(ObstacleBackground->imageData + i*ObstacleBackground->widthStep))[j*ObstacleBackground->nChannels + 2];
-			backg = ((uchar *)(ObstacleBackground->imageData + i*ObstacleBackground->widthStep))[j*ObstacleBackground->nChannels + 1];
-			backb = ((uchar *)(ObstacleBackground->imageData + i*ObstacleBackground->widthStep))[j*ObstacleBackground->nChannels + 0];
-            
-            int diff = (r-backr)*(r-backr) + (g-backg)*(g-backg)+ (b-backb)*(b-backb);
+			int r, g, b;
+			r = pixRGB(img, j, i, 2);
+			g = pixRGB(img, j, i, 1);
+			b = pixRGB(img, j, i, 0);
+			
+			backr = pixRGB(ObstacleBackground, j, i, 2);
+			backg = pixRGB(ObstacleBackground, j, i, 1);
+			backb = pixRGB(ObstacleBackground, j, i, 0);			
+
+            int diff = (r-backr)*(r-backr) + (g-backg)*(g-backg) + (b-backb)*(b-backb);
             
             diff = sqrt((double)diff);
             if (diff > 255) diff = 255;
             if (diff < 0) diff = 0;
-            
-            if (diff > 20) diff = 255;
-            
-            ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 2] = diff;
-            ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 1] = diff;
-            ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 0] = diff;
+						
+            if (diff <= 100) diff = 0;
+			if (diff >= 120) diff = 255;
+
+			pixRGB(img, j, i, 2) = pixRGB(img, j, i, 1) = pixRGB(img, j, i, 0) = diff;
 		}
 	} // we have now set our images to be pure red wherever the goals are. We need to perform blob detection
 	
-	cvShowImage("goals detection", img);
+	IplImage *gray = same_size_image_8bit(img);
+	
+	cvCvtColor(img, gray, CV_BGR2GRAY);
 	
 	//and use the the two blobs as the locations of our goals.
-	try {
-	CBlobResult goals = CBlobResult(img, NULL,0,true);
+	
+	CBlobResult goals = CBlobResult(gray, NULL,0,true);
+	
+	//goals.PrintBlobs("/dev/stdout");
+	
 	goals.Filter(goals, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
 	goals.Filter(goals, B_INCLUDE, CBlobGetArea(), B_GREATER, 20);
+	
+	//goals.PrintBlobs("/dev/stdout");
+	
 	for(int i = 0; i < goals.GetNumBlobs(); i ++){
         CBlob goalArea = goals.GetBlob(i);
         CvBox2D goalEllipse = goalArea.GetEllipse();
@@ -680,11 +686,6 @@ static void setGoalObstacleBackground(){
 			}
 		}
 	}
-}
-catch (int i) {
-	printf("couldn't find goal blobs, err %d\n", i);
-}
-
 }
 
 static void setObstacleBackground(){
@@ -1222,7 +1223,6 @@ void processCamera()
 	ObjectPos pos;
 	
     if(first){
-		printf("test");
         first = 0;
         setBackground();
         setObstacleBackground();
