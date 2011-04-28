@@ -29,6 +29,7 @@ char cameraURL[20][50000];
 CvPoint goal1;
 CvPoint goal2;
 CvPoint enemyPos;
+CvPoint goalPoint; // for goal line
 bool enemyFound;
 vector<CvPoint> enemyPositions;
 
@@ -1044,9 +1045,10 @@ static ObjectPos find_objects(bool find_fruit)
         pos.robotPos.y = (int)(Right.y + Left.y)/2;
     }
     
-	 int drawx = pos.robotPos.x + sin((double)(pos.robotOrientation/ 180.0 * PI)*50);
-     int drawy = pos.robotPos.y - cos((double)(pos.robotOrientation/180*PI)*50);
+	 int drawx = pos.robotPos.x + cos(pos.robotOrientation*(PI/180))*100;
+     int drawy = pos.robotPos.y - sin(pos.robotOrientation*(PI/180))*100;
      cvLine(input, pos.robotPos, cvPoint(drawx,drawy),CV_RGB(0, 250,250));
+     cvLine(input, pos.robotPos, goalPoint,CV_RGB(250, 0,250));
 
 	 /*if((goal1.x != 0)&&(goal1.y != 0))
 	 {
@@ -1097,21 +1099,18 @@ static ObjectPos find_objects(bool find_fruit)
      */
     
     // cvNamedWindow("Output Image - Blob Demo", 1);
-    /*
-     {
-     static int localCount = 0;
-     if(localCount % 5 == 0 && 0){
-     localCount = 0;
-     string imageName;
-     std::stringstream out;
-     out << "trace/trace" << imageCount <<".jpg";
-     imageName = out.str();
-     cvSaveImage(imageName.c_str(), input);
-     imageCount= imageCount + 1;
-     }
-     localCount++;
-     }
-     */  
+    
+	{
+		static int imageCount = 0;
+		if(1){
+			string imageName;
+			std::stringstream out;
+			out << "trace/trace" << imageCount++ <<".jpg";
+			imageName = out.str();
+			cvSaveImage(imageName.c_str(), input);
+		}
+	}
+     
     cvShowImage("Output Image - Blob Demo", input);
     cvWaitKey(1);
     
@@ -1163,6 +1162,7 @@ int selectGoal(ObjectPos pos, int foundEnemy){
         
 		goal1dist = pdistance(pos.robotPos, goal1);
 		goal2dist = pdistance(pos.robotPos, goal2);
+		printf("distances 1: %d 2: %d\n", goal1dist, goal2dist);
 		if(goal2dist < goal1dist){
 			return 2;
 		}
@@ -1213,13 +1213,13 @@ void giveOrders()
     
 	if((temp_angle >=-135) && (temp_angle <-45))
 	{
-		printf("- right, angle %f\n", temp_angle);
-		rovio_driveRight(3);
+		printf("- left, angle %f\n", temp_angle);
+		rovio_driveLeft(3);
 		return;
 	}
 	if((temp_angle >=45) &&(temp_angle < 135)){
-		printf("- left, angle %f\n", temp_angle);
-		rovio_driveLeft(3);
+		printf("- right, angle %f\n", temp_angle);
+		rovio_driveRight(3);
 		return;
 	}
 	else{
@@ -1256,15 +1256,19 @@ void giveOrders()
 
 void moveToPoint(CvPoint p, ObjectPos pos){
 	CvPoint arbitrary;
-	while((abs(pos.robotPos.x - p.x) > 20)&&(abs(pos.robotPos.y - p.y)> 20)){
-		arbitrary.x = (int)(sin((double)pos.robotOrientation/180*PI)*20 + pos.robotPos.x);
-		arbitrary.y = (int)(pos.robotPos.y - cos((double)pos.robotOrientation/180*PI)*20);
+	
+	while(pdistance(pos.robotPos, p) >= 20*20){
+		arbitrary.x = (int)(cos(pos.robotOrientation*(PI/180))*20 + pos.robotPos.x);
+		arbitrary.y = (int)(pos.robotPos.y - sin(pos.robotOrientation*(PI/180))*20);
 		CvPoint Robot = pos.robotPos;
 		CvPoint orientation = arbitrary;
 		CvPoint Dest = p;
 		TriangleAlgorithm(&Robot,&orientation,&Dest);
 		giveOrders();
+		goalPoint = p;
 		pos = find_robot();
+		
+		printf("distance = %f\n", sqrt(pdistance(pos.robotPos, p)));
 	}
 }
 
