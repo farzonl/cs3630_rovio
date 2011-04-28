@@ -549,6 +549,9 @@ static void setBackground(){
             break;
         cvReleaseImage(&img);
 	}
+	
+	printf("1: Set background\n");
+	
     background = cvCloneImage(img);
 	cvSmooth(img, background, CV_BILATERAL,5,5,50,50);
 	cvReleaseImage(&img);
@@ -639,6 +642,9 @@ static void setGoalObstacleBackground(){
             break;
 		cvReleaseImage(&img);
 	}
+	
+	printf("3: Set goals\n");
+	
     GoalObstacleBackground = cvCloneImage(img);
 	cvSmooth(img, GoalObstacleBackground, CV_BILATERAL,5,5,50,50);
     cvReleaseImage(&img);
@@ -686,17 +692,31 @@ static void setGoalObstacleBackground(){
 	for(int i = 0; i < goals.GetNumBlobs(); i ++){
         CBlob goalArea = goals.GetBlob(i);
         CvBox2D goalEllipse = goalArea.GetEllipse();
+		CvPoint gp = cvPoint(goalEllipse.center.x, goalEllipse.center.y);
+		int n = 0;
+		
         if(goalArea.Area() > 50)
         { 
 			if( i == 0){
 				goal1.x = goalEllipse.center.x;
 				goal1.y = goalEllipse.center.y;
+				n = 1;
 			}
 			if(i == 1){
 				goal2.x = goalEllipse.center.x;
 				goal2.y = goalEllipse.center.y;
+				n = 2;
 			}
 		}
+		
+		if (n == 0)
+		    cvCircle(GoalObstacleBackground, gp, 20, CV_RGB(0, 250, 0), 2, 1);
+		else if (n == 1)
+		    cvCircle(GoalObstacleBackground, gp, 20, CV_RGB(250, 0, 0), 2, 1);
+        else
+            cvCircle(GoalObstacleBackground, gp, 20, CV_RGB(0, 0, 250), 2, 1);
+        
+		cvShowImage("goals", GoalObstacleBackground);
 	}
 }
 
@@ -714,6 +734,8 @@ static void setObstacleBackground(){
 		cvReleaseImage(&img);
 	}
     
+	printf("2: Set obstacles\n");
+
     ObstacleBackground = cvCloneImage(img);
 	cvSmooth(img, ObstacleBackground, CV_BILATERAL,5,5,50,50);
     cvReleaseImage(&img);
@@ -1127,6 +1149,8 @@ static void idleAwaitingObjects()
         if(key == '4')
             break;
 	} 
+	
+	printf("4: Set robot\n");
 }
 
 #pragma mark -- main loop
@@ -1274,6 +1298,8 @@ void processCamera()
 			}
 		}
 		goal = selectGoal(pos, enemyFound);
+		
+		printf("returned from first\n");
 	}
 	
     try {
@@ -1293,6 +1319,9 @@ void processCamera()
                 
 				moveToPoint((cvPoint(path.at(i).x(), path.at(i).y())),pos);
 			}
+			
+			printf("escaped\n");
+			
 			//dprintf("--\ndrive to fruit\n\n");
 			//movement::drive_to_goal(path);
             

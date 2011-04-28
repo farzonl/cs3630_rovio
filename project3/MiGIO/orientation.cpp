@@ -85,6 +85,8 @@ CvPoint getCPoint(CvPoint* robot, CvPoint* orientation, double radius)
 
 double getDir(double angle)
 {
+	double _angle = angle;
+	
 	if(robot.x > dest.x)
 		side = DirLeft;
 	//else if (R->getX() == L->getX()) // <--- this should be fuzzy
@@ -93,11 +95,17 @@ double getDir(double angle)
 	else
 		side = DirRight;
 
-	if((dest.y < robot.y)&&(dest.x < robot.x)&& (side == DirLeft))
+	if((dest.y < robot.y)&&(dest.x < robot.x)&& (side == DirLeft)) {
 		angle = 180 - angle; 
+		side = DirRight;
+	}
 
-	if((dest.y < robot.y)&&(dest.x >= robot.x)&& (side == DirRight))
+	if((dest.y < robot.y)&&(dest.x >= robot.x)&& (side == DirRight)) {
 		angle = 180 - angle; 
+		side = DirLeft;
+	}
+
+	printf("getDir: robot %d,%d dest %d/%d angle %f->%f = side %d\n", robot.x, robot.y, dest.x, dest.y, _angle, angle, side);
 
 	return angle;
 }
@@ -119,7 +127,7 @@ void TriangleAlgorithm(CvPoint* Robot, CvPoint* orientation, CvPoint* Dest)
 	double half         =  distance(Robot, &chordMP);
 	
 	double slope        =  (chord/2.0)/half;
-	double angle        =  atan(slope)
+	double angle        =  atan(slope);
 	
 	if ((half<0)&&((chord/2.0)<0) ||(half<0)&&((chord/2.0)>0))
 		{
