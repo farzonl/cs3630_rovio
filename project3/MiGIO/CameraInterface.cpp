@@ -1027,7 +1027,8 @@ static ObjectPos find_objects(bool find_fruit)
 
 	 if((goal1.x != 0)&&(goal1.y != 0))
 	 {
-		 TriangleAlgorithm(&pos.robotPos,&cvPoint(drawx,drawy),&goal1);
+		CvPoint p = cvPoint(drawx,drawy);
+		 TriangleAlgorithm(&pos.robotPos,&p,&goal1);
 		 cvLine(input,pos.robotPos, chordPoint, CV_RGB(0,0,255));
 		 cvLine(input,pos.robotPos, cvPoint(drawx,drawy), CV_RGB(0,255,0));
 		 cvLine(input,pos.robotPos, goal1, CV_RGB(0,255,255));
@@ -1274,12 +1275,7 @@ void processCamera()
 			found = 1;
 			std::vector<VisiLibity::Point> path;
 			CvPoint originalPos = pos.robotPos;
-			if(goal == 1){
-				path = visibility::find_robot_path(pos.robotPos, goal1);
-			}
-			else{
-				path = visibility::find_robot_path(pos.robotPos, goal2);
-			}
+            path = visibility::find_robot_path(pos.robotPos, goal==1 ? goal1 : goal2);
 			//path = visibility::find_robot_path(pos.robotPos, pos.fruitPos);
 			//cvShowImage("visibility graph", visibility_image);
 			cvWaitKey(3);
@@ -1290,8 +1286,8 @@ void processCamera()
                 
 				moveToPoint((cvPoint(path.at(i).x(), path.at(i).y())),pos);
 			}
-			dprintf("--\ndrive to fruit\n\n");
-			movement::drive_to_goal(path);
+			//dprintf("--\ndrive to fruit\n\n");
+			//movement::drive_to_goal(path);
             
 			//dprintf("--\ndrive back\n\n");
 			//rovio_camera_height(low);
@@ -1307,8 +1303,9 @@ void processCamera()
 			std::vector<VisiLibity::Point> path;
 			CvPoint originalPos = pos.robotPos;
 			//if(goal == 1){
+			printf("nothing to do\n");
 			path = visibility::find_robot_path(pos.robotPos, enemyPos);
-			movement::drive_to_goal(path);
+			//movement::drive_to_goal(path);
             //of couse, the enemy will move, so we will recalculate the path.
             
 			//}
@@ -1332,10 +1329,10 @@ void processCamera()
 		}
 	}
     } catch (std::exception &e) {
-	
-	printf("%s", e.what());
-	
-	throw;
+        
+        printf("%s", e.what());
+        
+        throw;
 	}
 }
 
