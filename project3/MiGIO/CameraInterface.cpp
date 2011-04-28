@@ -418,6 +418,7 @@ namespace visibility {
         }
         
         visibility_graph_image = same_size_image_24bit(ObstacleBackground);
+        cvSet(visibility_graph_image, cvScalar(0,0,0));
 
         for (int i = 0; i < permanent_obstacles.size(); i++) {
             CvBox2D box = permanent_obstacles[i];
@@ -833,7 +834,7 @@ void newEnemyPos(CvPoint place){
 		}
         
 		for(int i = 1; i < 5; i ++){
-			newplaces.push_back(enemyPositions.at(i+1));
+			newplaces.push_back(enemyPositions.at(i));
 		}
 		newplaces.push_back(place);
 		enemyPositions = newplaces;
@@ -1251,6 +1252,7 @@ void processCamera()
 		goal = selectGoal(pos, enemyFound);
 	}
 	
+    try {
 	if(escape){
 		if (!found && (pos = find_objects(true)).found) {
 			found = 1;
@@ -1312,6 +1314,12 @@ void processCamera()
 			//path = visibility::find_robot_path(pos.robotPos, originalPos);
 			//movement::drive_to_goal(path);   
 		}
+	}
+    } catch (std::exception &e) {
+	
+	printf("%s", e.what());
+	
+	throw;
 	}
 }
 
