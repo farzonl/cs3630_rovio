@@ -12,7 +12,7 @@
 //--------------------------------------------------------------------
 
 #include <cv.h>
-#include <curl/curl.h>
+#include "curl/curl.h"
 #include <cxcore.h>
 #include <highgui.h>
 #include <iostream>

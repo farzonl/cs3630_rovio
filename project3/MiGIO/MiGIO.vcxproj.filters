@@ -42,7 +42,10 @@
     <ClCompile Include="SerialTerm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="geoCompute.cpp">
+    <ClCompile Include="visilibity.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="orientation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -72,6 +75,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SerialTerm.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="visilibity.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="orientation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

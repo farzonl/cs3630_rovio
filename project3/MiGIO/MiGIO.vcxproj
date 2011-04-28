@@ -43,8 +43,8 @@
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
-    <IncludePath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">C:\Users\Farzon\Desktop\Rovio\cvblobslib_OpenCV_v6;C:\OpenCV2.2\include\opencv;C:\OpenCV2.2\include;$(IncludePath)</IncludePath>
-    <LibraryPath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">C:\Users\Farzon\Desktop\Rovio\cvblobslib_OpenCV_v6\Debug;C:\OpenCV2.2\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">C:\Users\Larry\Desktop\cvblobslib_OpenCV_v6;C:\OpenCV2.2\include\opencv;C:\OpenCV2.2\include;$(IncludePath)</IncludePath>
+    <LibraryPath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">C:\Users\Larry\Desktop\cvblobslib_OpenCV_v6\Debug;C:\OpenCV2.2\lib;$(LibraryPath)</LibraryPath>
     <IncludePath Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">C:\OpenCV2.2\include\opencv;C:\OpenCV2.2\include;$(IncludePath)</IncludePath>
     <LibraryPath Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">C:\OpenCV2.2\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
@@ -93,25 +93,28 @@
   <ItemGroup>
     <ClCompile Include="CameraInterface.cpp" />
     <ClCompile Include="CVConsole.cpp" />
-    <ClCompile Include="geoCompute.cpp" />
     <ClCompile Include="HTTPInterface.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="orientation.cpp" />
     <ClCompile Include="RobotInterface.cpp" />
     <ClCompile Include="RobotInterfacePleo.cpp" />
     <ClCompile Include="RobotInterfaceRovio.cpp" />
     <ClCompile Include="RobotStatus.cpp" />
     <ClCompile Include="SerialTerm.cpp" />
+    <ClCompile Include="visilibity.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CameraInterface.h" />
     <ClInclude Include="Configuration.h" />
     <ClInclude Include="CVConsole.h" />
     <ClInclude Include="HTTPInterface.h" />
+    <ClInclude Include="orientation.h" />
     <ClInclude Include="RobotInterface.h" />
     <ClInclude Include="RobotInterfacePleo.h" />
     <ClInclude Include="RobotInterfaceRovio.h" />
     <ClInclude Include="RobotStatus.h" />
     <ClInclude Include="SerialTerm.h" />
+    <ClInclude Include="visilibity.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

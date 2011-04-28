@@ -112,7 +112,7 @@ void robotSendActuators(){
 }
 
 //CURLcode rovio_forward(CURL *curl, int n,int s)
-void rovio_forward(int n,int s=5)
+void rovio_forward(int n,int s)
 {
     //CURLcode res;
 	char buf[1024];
@@ -136,7 +136,7 @@ void rovio_forward(int n,int s=5)
     //return res;
 }
 
-void rovio_backward(int n,int s=5)
+void rovio_backward(int n,int s)
 {
 	char buf[1024];
     int i;
@@ -195,7 +195,7 @@ void rovio_turnLeftByDegree(int n)
 }
 
 //CURLcode rovio_driveLeft(CURL *curl, int n) 
-void rovio_driveLeft(int n, int s=5) 
+void rovio_driveLeft(int n, int s) 
 {  
     
 	char buf[1024];
@@ -219,7 +219,7 @@ void rovio_driveLeft(int n, int s=5)
 }
 
 //CURLcode rovio_driveRight(CURL *curl, int n) {
-void rovio_driveRight(int n, int s=5) 
+void rovio_driveRight(int n, int s) 
 {  
     
 	char buf[1024];
