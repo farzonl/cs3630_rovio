@@ -1021,8 +1021,8 @@ static ObjectPos find_objects(bool find_fruit)
         pos.robotPos.y = (int)(Right.y + Left.y)/2;
     }
     
-	 int drawx = pos.robotPos.x + sin((double)(pos.robotOrientation/ 180.0 * PI))*50);
-     int drawy = pos.robotPos.y - cos((double)(pos.robotOrientation/180*PI))*50);
+	 int drawx = pos.robotPos.x + sin((double)(pos.robotOrientation/ 180.0 * PI)*50);
+     int drawy = pos.robotPos.y - cos((double)(pos.robotOrientation/180*PI)*50);
      cvLine(input, pos.robotPos, cvPoint(drawx,drawy),CV_RGB(0, 250,250));
 
 	 /*if((goal1.x != 0)&&(goal1.y != 0))

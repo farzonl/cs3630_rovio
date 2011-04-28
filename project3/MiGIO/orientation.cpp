@@ -124,7 +124,7 @@ void TriangleAlgorithm(CvPoint* Robot, CvPoint* orientation, CvPoint* Dest)
 		angle = angle + PI;
 	}
     
-	angle = angle* 180.0 / PI
+	angle = angle* 180.0 / PI;
 	
 	assert(isfinite(angle));
 	printf("Angle: %f\n",angle);
