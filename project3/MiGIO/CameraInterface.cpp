@@ -1279,6 +1279,8 @@ void processCamera()
 	
     if(first){
         first = 0;
+		rovio_camera_height(low);
+
         setBackground();
         setObstacleBackground();
 		setGoalObstacleBackground();
@@ -1313,59 +1315,33 @@ void processCamera()
 			std::vector<VisiLibity::Point> path;
 			CvPoint originalPos = pos.robotPos;
             path = visibility::find_robot_path(pos.robotPos, goal==1 ? goal1 : goal2);
-			//path = visibility::find_robot_path(pos.robotPos, pos.fruitPos);
-			//cvShowImage("visibility graph", visibility_image);
-			cvWaitKey(3);
-			//rovio_camera_height(middle);
+			printf("escaping\n");
+
 			for(int i = 0; i < path.size(); i ++){
-				//int px = (int)(path.at(i)).x();
-				//int py = (int)(path.at(i)).y();
+				int px = (int)(path.at(i)).x();
+				int py = (int)(path.at(i)).y();
                 
-				moveToPoint((cvPoint(path.at(i).x(), path.at(i).y())),pos);
+				moveToPoint(cvPoint(px,py),pos);
 			}
 			
 			printf("escaped\n");
-			
-			//dprintf("--\ndrive to fruit\n\n");
-			//movement::drive_to_goal(path);
-            
-			//dprintf("--\ndrive back\n\n");
-			//rovio_camera_height(low);
-			//rovio_turn(TurnLeft, 10);
-            
-			//path = visibility::find_robot_path(pos.robotPos, originalPos);
-			//movement::drive_to_goal(path);   
 		}
 	}
 	else{
-		if (!found && (pos = find_objects(true)).found) {
-			found = 1;
+		if ((pos = find_objects(true)).found) {
 			std::vector<VisiLibity::Point> path;
 			CvPoint originalPos = pos.robotPos;
-			//if(goal == 1){
-			printf("nothing to do\n");
-			path = visibility::find_robot_path(pos.robotPos, enemyPos);
-			//movement::drive_to_goal(path);
-            //of couse, the enemy will move, so we will recalculate the path.
-            
-			//}
-			//else{
-            //path = visibility::find_robot_path(pos.robotPos, goal2);
-			//}
-			//path = visibility::find_robot_path(pos.robotPos, pos.fruitPos);
-			//cvShowImage("visibility graph", visibility_image);
-			cvWaitKey(3);
-			//rovio_camera_height(middle);
-            
-			//dprintf("--\ndrive to fruit\n\n");
-			//movement::drive_to_goal(path);
-            
-			//dprintf("--\ndrive back\n\n");
-			//rovio_camera_height(low);
-			//rovio_turn(TurnLeft, 10);
-            
-			//path = visibility::find_robot_path(pos.robotPos, originalPos);
-			//movement::drive_to_goal(path);   
+
+			printf("attacking\n");
+			path = visibility::find_robot_path(pos.robotPos, enemyPos);			
+			rovio_camera_height(middle);
+			
+			for(int i = 0; i < path.size(); i ++){
+				int px = (int)(path.at(i)).x();
+				int py = (int)(path.at(i)).y();
+                
+				moveToPoint(cvPoint(px,py),pos);
+			} 
 		}
 	}
     } catch (std::exception &e) {
