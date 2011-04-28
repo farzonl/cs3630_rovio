@@ -133,7 +133,8 @@ void TriangleAlgorithm(CvPoint* Robot, CvPoint* orientation, CvPoint* Dest)
 	
 	//assert(isfinite(angle));
 	printf("Angle: %f\n",angle);
-	Angle = getDir(angle);
+	//Angle = getDir(angle);
+	Angle = angle;
 	//assert(isfinite(angle));
 	printf("Angle: %f\n",Angle);
 

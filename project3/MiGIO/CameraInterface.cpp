@@ -1203,21 +1203,27 @@ void giveOrders()
 
 	printf("giving orders = angle %f counter %d side %d\n", Angle, counter, side);
 
-	if((temp_angle >=40.0) && (temp_angle <=65.0))
+	if((temp_angle >=-45) && (temp_angle <45))
 	{
-		if(side == DirLeft)
-			rovio_DiagForLeft(3);
-		else
-			rovio_DiagForRight(3); 
+		printf("- forward, angle %f\n", temp_angle);
+		rovio_forward(3); 
 		return;
 	}
     
-	if((temp_angle >=80.0) && (temp_angle <=105.0))
+	if((temp_angle >=-135) && (temp_angle <-45))
 	{
-		if(side == DirLeft)
-		    rovio_driveLeft(3);
-		else
-			rovio_driveRight(3);
+		printf("- right, angle %f\n", temp_angle);
+		rovio_driveRight(3);
+		return;
+	}
+	if((temp_angle >=45) &&(temp_angle < 135)){
+		printf("- left, angle %f\n", temp_angle);
+		rovio_driveLeft(3);
+		return;
+	}
+	else{
+		printf("- back, angle %f\n", temp_angle);
+		rovio_backward(3);
 		return;
 	}
     
