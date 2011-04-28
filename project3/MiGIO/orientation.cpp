@@ -119,8 +119,10 @@ void TriangleAlgorithm(CvPoint* Robot, CvPoint* orientation, CvPoint* Dest)
 	double half         =  distance(Robot, &chordMP);
     double angle        = 2*asin((chord/2.0)/radius) * 180.0 / PI;
 	
+	assert(isfinite(angle));
 	printf("Angle: %f\n",angle);
 	Angle = getDir(angle);
+	assert(isfinite(angle));
 	printf("Angle: %f\n",Angle);
 
 
