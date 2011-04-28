@@ -20,7 +20,7 @@
 //#define ROVIO_HOST "143.215.110.22" //alex's rovio
 #define ROVIO_PORT "80"
 #define PLEO_PORT "COM3"
-#define DEBUG 0
+#define DEBUG 1
 
 #define USE_CAMERA
 #define USE_CONTROLLER

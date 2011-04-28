@@ -81,8 +81,6 @@ CvPoint getCPoint(CvPoint* robot, CvPoint* orientation, double radius)
 
 }
 
-
-
 double getDir(double angle)
 {
 	if(robot.x > dest.x)
@@ -102,8 +100,6 @@ double getDir(double angle)
 	return angle;
 }
 
-
-
 void TriangleAlgorithm(CvPoint* Robot, CvPoint* orientation, CvPoint* Dest)
 {
 	assert(Robot);
@@ -119,7 +115,7 @@ void TriangleAlgorithm(CvPoint* Robot, CvPoint* orientation, CvPoint* Dest)
 	double half         =  distance(Robot, &chordMP);
 	
 	double slope        =  (chord/2.0)/half;
-	double angle        =  atan(slope)
+	double angle        =  atan(slope);
 	
 	if ((half<0)&&((chord/2.0)<0) ||(half<0)&&((chord/2.0)>0))
 		{
@@ -135,10 +131,10 @@ void TriangleAlgorithm(CvPoint* Robot, CvPoint* orientation, CvPoint* Dest)
     
 	angle = angle* 180.0 / PI;*/
 	
-	assert(isfinite(angle));
+	//assert(isfinite(angle));
 	printf("Angle: %f\n",angle);
 	Angle = getDir(angle);
-	assert(isfinite(angle));
+	//assert(isfinite(angle));
 	printf("Angle: %f\n",Angle);
 
 
