@@ -1033,6 +1033,7 @@ static ObjectPos find_objects(bool find_fruit)
 		 cvLine(input,pos.robotPos, goal1, CV_RGB(0,255,255));
 	 }
 
+
      cvShowImage("orientations!!!", input);
 
     blobs.ClearBlobs();
