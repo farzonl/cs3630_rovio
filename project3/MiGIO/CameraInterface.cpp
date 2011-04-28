@@ -16,7 +16,6 @@
 
 #define dprintf if (DEBUG) printf
 
-
 bool escape = true;
 CvMemStorage *gStorage = NULL;
 IplImage* background = NULL;
@@ -55,196 +54,201 @@ static int distance(int x1, int y1, int x2, int y2)
     return xd*xd+yd*yd;
 }
 
+static int pdistance(CvPoint a, CvPoint b)
+{
+    return distance(a.x, a.y, b.x, b.y);
+}
+
 namespace movement {
-static float angle_towards(int x1, int y1, int x2, int y2)
-{
-    int xv = x2 - x1;
-    int yv = y2 - y1;
+    static float angle_towards(int x1, int y1, int x2, int y2)
+    {
+        int xv = x2 - x1;
+        int yv = y2 - y1;
         
-    float res = atan2f(yv, xv);
-    
-    res = (2*M_PI) - res;
-    res = fmodf(res, 2*M_PI);
-    return res * (180./M_PI);
-}
-
-// 1 if b is CCW of a
-// 0 if b is CW of a
-static int compare_angle(float a, float b)
-{
-    int ret;
-    
-    if ((a <= 180 && b <= 180) || (a >= 180 && b >= 180)) {
-        // b, a both top
-        // ccw - b > a
-        ret = b > a;
-    } else {
-        if (b >= a) {
-            ret = (360 + b) >= a;
-        } else
-            ret = (360 + a) >= b;
+        float res = atan2f(yv, xv);
+        
+        res = (2*M_PI) - res;
+        res = fmodf(res, 2*M_PI);
+        return res * (180./M_PI);
     }
     
-    dprintf("a %f b %f ccw %d\n", a, b, ret);
-    
-    return ret;
-}
-
-static void _turn_to(float curAngle, float wantAngle)
-{
-    float maxA, minA;
-    RovioTurn turn;
-    float diff, fn;
-    int n;
-    float lastCurAngle = curAngle;
-    
-    if (compare_angle(curAngle, wantAngle)) {
-        turn = TurnLeft;
-    } else {
-        turn = TurnRight;
-    }
-    
-    if (curAngle > wantAngle) {
-        maxA = curAngle;
-        minA = wantAngle;
-    } else {
-        maxA = wantAngle;
-        minA = curAngle;
-    }
-    diff = maxA - minA;
-
-    fn = diff / 15.;
-    n = fn + .5;
-    
-    dprintf(">> turn %f -> %f (%f degrees, dir %d = %f turns = cmd %d)\n", curAngle, wantAngle, diff, (int)turn, fn, n);
-    rovio_turn(turn, n);
-    
-    do {
-        RovioTurn cturn;
-		ObjectPos pos;
-
-        // wait to find the robot
-		pos = find_robot();
-        lastCurAngle = curAngle;
-        curAngle = pos.robotOrientation;
-        if (compare_angle(curAngle, wantAngle)) {
-            cturn = TurnLeft;
+    // 1 if b is CCW of a
+    // 0 if b is CW of a
+    static int compare_angle(float a, float b)
+    {
+        int ret;
+        
+        if ((a <= 180 && b <= 180) || (a >= 180 && b >= 180)) {
+            // b, a both top
+            // ccw - b > a
+            ret = b > a;
         } else {
-            cturn = TurnRight;
-        }
-
-        if (abs(lastCurAngle - curAngle) > 60.) {
-            dprintf("-- noisy orientation reading, retry\n");
-            continue;
+            if (b >= a) {
+                ret = (360 + b) >= a;
+            } else
+                ret = (360 + a) >= b;
         }
         
-        if (turn != cturn) {
-            dprintf("-- overturned (turn = %d cturn = %d) (%f -> %f), break\n", turn, cturn, curAngle, wantAngle);
-            break;
-        }
+        dprintf("a %f b %f ccw %d\n", a, b, ret);
         
-        if ((abs(curAngle - wantAngle) < 10 || abs((360+curAngle) - wantAngle) < 10)) {
-            dprintf("-- can't improve turn, break (cur = %f want = %f)\n", curAngle, wantAngle);
-            break;
-        }
-        
-        dprintf("correction turn %f -> %f (%f degrees, dir %d)\n", curAngle, wantAngle, diff, (int)turn);
-        rovio_turn_small(turn);
-    } while (1);
-    
-    dprintf("<< turned, final angle %f wanted %f\n", curAngle, wantAngle);
-}
-
-// we're already turned as best we can
-// just drive forwards until past it
-static void _drive_to(int wantX, int wantY)
-{
-    int cdistance, last_distance = INT_MAX;
-	ObjectPos pos = find_robot();
-    
-    printf(">> drive from %d,%d to %d,%d\n", pos.robotPos.x, pos.robotPos.y, wantX, wantY);
-    
-    cdistance = distance(pos.robotPos.x, pos.robotPos.y, wantX, wantY);
-
-    do {
-        dprintf("distance = %f, driving forward\n", sqrt((double)cdistance));
-        rovio_drive(5, DirForward);
-        
-		pos = find_robot();
-        
-        // avoid iterating forever due to noise
-        if (abs(last_distance - cdistance) > 10)
-            last_distance = cdistance;
-
-        cdistance = distance(pos.robotPos.x, pos.robotPos.y, wantX, wantY);
-        dprintf("distance now = %f\n", sqrt((double)cdistance));
-    } while ((last_distance - cdistance) > 10);
-    
-    printf("<< stopped, distance increased to %f (pos %d, %d)\n", sqrt((double)cdistance), pos.robotPos.x, pos.robotPos.y);
-}
-
-static void _drive_to_point(VisiLibity::Point p)
-{
-    int did_drive;
-    int should_redo_turn = 1;
-    
-    do {
-        int next_x = p.x(), next_y = p.y();
-		ObjectPos pos = find_robot();
-		// FIXME this find_robot() is just for termination checks which could be merged into sub-functions
-
-        int cur_x = pos.robotPos.x, cur_y = pos.robotPos.y;
-        float angle;
-        
-        did_drive = 0;
-        
-        do {
-            angle = angle_towards(cur_x, cur_y, next_x, next_y);
-            float curAngle = pos.robotOrientation;
-            
-            if (!should_redo_turn)
-                break;
-            
-            if ((abs(curAngle - angle) < 10 || abs((360+curAngle) - angle) < 10))
-                break;
-                        
-            _turn_to(curAngle, angle);
-        } while (0);
-        
-        do {
-            if (distance(cur_x,cur_y,next_x,next_y) <= 60*60)
-                break;
-            
-            did_drive = 1;
-            
-            _drive_to(next_x, next_y);
-        } while (0);
-        
-        if (!did_drive) break;
-        
-        // check the angle of the distance
-        // if it flipped, we crossed the center point
-        // if it didn't, we drove off somewhere - turn around and try again
-        float new_angle = angle_towards(pos.robotPos.x, pos.robotPos.y, next_x, next_y);
-        float diff = new_angle - angle;
-        
-        // diff should be ~= 180 degrees if we can stop
-        should_redo_turn = abs(diff - 180.) >= 10. && abs(diff) >= 10.;
-        dprintf("-- after stopping, old angle = %f, new angle = %f, should be inverse, retry %d, didDrive %d\n", angle, new_angle, should_redo_turn, did_drive);
-    } while (should_redo_turn);
-}
-
-// drives robot (robotPos) to the goal
-static void drive_to_goal(std::vector<VisiLibity::Point> path)
-{
-    using namespace VisiLibity;
-    for (int i = 1; i < path.size(); i++) {
-        Point p = path[i];
-        
-        _drive_to_point(p);
-        return;
+        return ret;
     }
-}
+    
+    static void _turn_to(float curAngle, float wantAngle)
+    {
+        float maxA, minA;
+        RovioTurn turn;
+        float diff, fn;
+        int n;
+        float lastCurAngle = curAngle;
+        
+        if (compare_angle(curAngle, wantAngle)) {
+            turn = TurnLeft;
+        } else {
+            turn = TurnRight;
+        }
+        
+        if (curAngle > wantAngle) {
+            maxA = curAngle;
+            minA = wantAngle;
+        } else {
+            maxA = wantAngle;
+            minA = curAngle;
+        }
+        diff = maxA - minA;
+        
+        fn = diff / 15.;
+        n = fn + .5;
+        
+        dprintf(">> turn %f -> %f (%f degrees, dir %d = %f turns = cmd %d)\n", curAngle, wantAngle, diff, (int)turn, fn, n);
+        rovio_turn(turn, n);
+        
+        do {
+            RovioTurn cturn;
+            ObjectPos pos;
+            
+            // wait to find the robot
+            pos = find_robot();
+            lastCurAngle = curAngle;
+            curAngle = pos.robotOrientation;
+            if (compare_angle(curAngle, wantAngle)) {
+                cturn = TurnLeft;
+            } else {
+                cturn = TurnRight;
+            }
+            
+            if (abs(lastCurAngle - curAngle) > 60.) {
+                dprintf("-- noisy orientation reading, retry\n");
+                continue;
+            }
+            
+            if (turn != cturn) {
+                dprintf("-- overturned (turn = %d cturn = %d) (%f -> %f), break\n", turn, cturn, curAngle, wantAngle);
+                break;
+            }
+            
+            if ((abs(curAngle - wantAngle) < 10 || abs((360+curAngle) - wantAngle) < 10)) {
+                dprintf("-- can't improve turn, break (cur = %f want = %f)\n", curAngle, wantAngle);
+                break;
+            }
+            
+            dprintf("correction turn %f -> %f (%f degrees, dir %d)\n", curAngle, wantAngle, diff, (int)turn);
+            rovio_turn_small(turn);
+        } while (1);
+        
+        dprintf("<< turned, final angle %f wanted %f\n", curAngle, wantAngle);
+    }
+    
+    // we're already turned as best we can
+    // just drive forwards until past it
+    static void _drive_to(int wantX, int wantY)
+    {
+        int cdistance, last_distance = INT_MAX;
+        ObjectPos pos = find_robot();
+        
+        printf(">> drive from %d,%d to %d,%d\n", pos.robotPos.x, pos.robotPos.y, wantX, wantY);
+        
+        cdistance = distance(pos.robotPos.x, pos.robotPos.y, wantX, wantY);
+        
+        do {
+            dprintf("distance = %f, driving forward\n", sqrt((double)cdistance));
+            rovio_drive(5, DirForward);
+            
+            pos = find_robot();
+            
+            // avoid iterating forever due to noise
+            if (abs(last_distance - cdistance) > 10)
+                last_distance = cdistance;
+            
+            cdistance = distance(pos.robotPos.x, pos.robotPos.y, wantX, wantY);
+            dprintf("distance now = %f\n", sqrt((double)cdistance));
+        } while ((last_distance - cdistance) > 10);
+        
+        printf("<< stopped, distance increased to %f (pos %d, %d)\n", sqrt((double)cdistance), pos.robotPos.x, pos.robotPos.y);
+    }
+    
+    static void _drive_to_point(VisiLibity::Point p)
+    {
+        int did_drive;
+        int should_redo_turn = 1;
+        
+        do {
+            int next_x = p.x(), next_y = p.y();
+            ObjectPos pos = find_robot();
+            // FIXME this find_robot() is just for termination checks which could be merged into sub-functions
+            
+            int cur_x = pos.robotPos.x, cur_y = pos.robotPos.y;
+            float angle;
+            
+            did_drive = 0;
+            
+            do {
+                angle = angle_towards(cur_x, cur_y, next_x, next_y);
+                float curAngle = pos.robotOrientation;
+                
+                if (!should_redo_turn)
+                    break;
+                
+                if ((abs(curAngle - angle) < 10 || abs((360+curAngle) - angle) < 10))
+                    break;
+                
+                _turn_to(curAngle, angle);
+            } while (0);
+            
+            do {
+                if (distance(cur_x,cur_y,next_x,next_y) <= 60*60)
+                    break;
+                
+                did_drive = 1;
+                
+                _drive_to(next_x, next_y);
+            } while (0);
+            
+            if (!did_drive) break;
+            
+            // check the angle of the distance
+            // if it flipped, we crossed the center point
+            // if it didn't, we drove off somewhere - turn around and try again
+            float new_angle = angle_towards(pos.robotPos.x, pos.robotPos.y, next_x, next_y);
+            float diff = new_angle - angle;
+            
+            // diff should be ~= 180 degrees if we can stop
+            should_redo_turn = abs(diff - 180.) >= 10. && abs(diff) >= 10.;
+            dprintf("-- after stopping, old angle = %f, new angle = %f, should be inverse, retry %d, didDrive %d\n", angle, new_angle, should_redo_turn, did_drive);
+        } while (should_redo_turn);
+    }
+    
+    // drives robot (robotPos) to the goal
+    static void drive_to_goal(std::vector<VisiLibity::Point> path)
+    {
+        using namespace VisiLibity;
+        for (int i = 1; i < path.size(); i++) {
+            Point p = path[i];
+            
+            _drive_to_point(p);
+            return;
+        }
+    }
 }
 
 #pragma mark -- visibility graph
@@ -254,7 +258,11 @@ static IplImage *same_size_image_8bit(IplImage *frame)
     return cvCreateImage(cvSize(frame->width, frame->height), IPL_DEPTH_8U, 1);
 }
 
-#if 0
+static IplImage *same_size_image_24bit(IplImage *frame)
+{
+    return cvCreateImage(cvSize(frame->width, frame->height), IPL_DEPTH_8U, 3);
+}
+
 static void draw_rect(IplImage *frame, CvRect r, int color)
 {
     // drawing
@@ -291,213 +299,216 @@ static void draw_point(IplImage *frame, int x, int y, int color)
     
     cvRectangle(frame, pt1, pt2, colors[color], 3, 8, 0);
 }
-#endif
 
 namespace visibility {
-// private
+    // private
 	std::vector<CvBox2D> permanent_obstacles;
 	VisiLibity::Environment *environment;
 	
-// returns input image (obstacles highlighted)
-// fills out global variable obstacleboxes
-static void mark_obstacle_boxes(IplImage *obstacles)
-{
-    IplImage *grey = same_size_image_8bit(obstacles);
-    
-    cvCvtColor(obstacles, grey, CV_BGR2GRAY);    
-    
-    CBlobResult blobs = CBlobResult(grey, NULL, 10, true);
-
-    blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 50);
-    blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_LESS, 250000);
-    
-    if (DEBUG) blobs.PrintBlobs("/dev/stdout");
-    
-    for (int i = 0; i < blobs.GetNumBlobs(); i++)
+    // returns input image (obstacles highlighted)
+    // fills out global variable obstacleboxes
+    static void mark_obstacle_boxes(IplImage *obstacles)
     {
-        CBlob blob = blobs.GetBlob(i);
-        CvBox2D box = blob.GetEllipse();
-        CvPoint2D32f pt[4];
-                
+        IplImage *grey = same_size_image_8bit(obstacles);
+        
+        cvCvtColor(obstacles, grey, CV_BGR2GRAY);    
+        
+        CBlobResult blobs = CBlobResult(grey, NULL, 10, true);
+        
+        blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 50);
+        blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_LESS, 250000);
+        
+        if (DEBUG) blobs.PrintBlobs("/dev/stdout");
+        
+        for (int i = 0; i < blobs.GetNumBlobs(); i++)
         {
-            CvRect fr;
-            fr.x      = blob.MinX();
-            fr.width  = blob.MaxX() - fr.x;
-            fr.y      = blob.MinY();
-            fr.height = blob.MaxY() - fr.y;
+            CBlob blob = blobs.GetBlob(i);
+            CvBox2D box = blob.GetEllipse();
+            CvPoint2D32f pt[4];
             
-            if (box.size.width > fr.width)
-                box.size.width = fr.width; // some opencv bug
-            
-            if (box.size.height > fr.height)
-                box.size.height = fr.height;
-            
-            if (fr.width >= obstacles->width && fr.height >= obstacles->height)
-                continue;
-            
-            //draw_rect(obstacles, fr, 1);
-        }
-        
-        blob.FillBlob(obstacles, CV_RGB(0,255,0));
-        dprintf("blob %d has %d edges\n", i, blob.edges->total);
-        dprintf("%d - x %f to %f, y %f to %f\n", i, blob.MinX(), blob.MaxX(), blob.MinY(), blob.MaxY());        
-        
-        cvBoxPoints(box, pt);
-        permanent_obstacles.push_back(box);
-        
-        //for (int j = 0; j < 4; j++) {
-        //    cvLine(obstacles, cvPointFrom32f(pt[j]), cvPointFrom32f(pt[(j+1)%4]), CV_RGB(0, 0, 255));
-        //}
-    }
-    
-    //return obstacles;
-}
-
-static VisiLibity::Point move_point_away(VisiLibity::Point p)
-{
-    // find the obstacle whose corner this point is on
-    // then move the point away from its center
-	// FIXME does not handle temporary obstacles - maybe put those in the list
-    float cx=0, cy=0;
-    
-    for (int i = 0; i < permanent_obstacles.size(); i++) {
-        CvBox2D box = permanent_obstacles[i];
-        CvPoint2D32f pt[4];
-        
-        cvBoxPoints(box, pt);
-        
-        for (int j = 0; j < 4; j++) {
-            float px = pt[j].x, py = pt[j].y;
-            
-            if (abs(px - p.x()) < 2. && abs(py - p.y()) < 2.) {
-                cx = box.center.x;
-                cy = box.center.y;
-                goto done;
+            {
+                CvRect fr;
+                fr.x      = blob.MinX();
+                fr.width  = blob.MaxX() - fr.x;
+                fr.y      = blob.MinY();
+                fr.height = blob.MaxY() - fr.y;
+                
+                if (box.size.width > fr.width)
+                    box.size.width = fr.width; // some opencv bug
+                
+                if (box.size.height > fr.height)
+                    box.size.height = fr.height;
+                
+                if (fr.width >= obstacles->width && fr.height >= obstacles->height)
+                    continue;
+                
+                //draw_rect(obstacles, fr, 1);
             }
-        }
-    }
-    
-    return p;
-    
-done:
-    float cxv = p.x() - cx, cyv = p.y() - cy;
-    float r = sqrtf(cxv * cxv + cyv * cyv);
-    cxv /= r;
-    cyv /= r;
-    
-    cxv *= 100;
-    cyv *= 100;
-    
-    return VisiLibity::Point(p.x() + cxv, p.y() + cyv);
-}
-
-// input - visibility_mark_obstacle_boxes
-// output - visibility graph drawn over image
-// fills out global variable visibility
-static void make_visibility_graph(int width, int height)
-{
-    using namespace VisiLibity;
-    
-    {
-        Point rp[4] = {
-            Point(0, 0),
-            Point(width, 0),
-            Point(width, height),
-            Point(0, height)};
-        std::vector<Point> rpv(rp, rp+4);
-        VisiLibity::Polygon boundary(rpv);
-        
-        environment = new Environment(boundary);
-    }
-    
-    for (int i = 0; i < permanent_obstacles.size(); i++) {
-        CvBox2D box = permanent_obstacles[i];
-        CvPoint2D32f pt[4];
-        Point pp[4];
-        
-        cvBoxPoints(box, pt);
-        
-        for (int j = 0; j < 4; j++) {
-            pp[j] = Point(pt[j].x, pt[j].y);
+            
+            blob.FillBlob(obstacles, CV_RGB(0,255,0));
+            dprintf("blob %d has %d edges\n", i, blob.edges->total);
+            dprintf("%d - x %f to %f, y %f to %f\n", i, blob.MinX(), blob.MaxX(), blob.MinY(), blob.MaxY());        
+            
+            cvBoxPoints(box, pt);
+            permanent_obstacles.push_back(box);
+            
+            //for (int j = 0; j < 4; j++) {
+            //    cvLine(obstacles, cvPointFrom32f(pt[j]), cvPointFrom32f(pt[(j+1)%4]), CV_RGB(0, 0, 255));
+            //}
         }
         
-        std::vector<Point> pv(pp, pp+4);
-        VisiLibity::Polygon hole(pv);
-        environment->add_hole(hole);
+        //return obstacles;
     }
     
-    environment->enforce_standard_form();
-    
-    //printf("vis valid %d area %f dia %f\n", visibility->is_valid(), visibility->area(), visibility->diameter());
-    
-    //printf("drawing visibility graph\n");
-    /*
-    IplImage *visibility_image = cvCloneImage(obstacle_image);
-    
-    int nlines = 0, nvertices = 0;
-    
+    static VisiLibity::Point move_point_away(VisiLibity::Point p)
     {
-        Visibility_Graph graph(*visibility);
-        nvertices = graph.n();
+        // find the obstacle whose corner this point is on
+        // then move the point away from its center
+        // FIXME does not handle temporary obstacles - maybe put those in the list
+        float cx=0, cy=0;
         
-        for (int i = 0; i < nvertices; i++) {
-            Point &p1 = (*visibility)(i);
-            for (int j = 0; j < nvertices; j++) {
-                Point &p2 = (*visibility)(j);
-                if (!graph(i, j) || (j > i && graph(j, i))) continue;
+        for (int i = 0; i < permanent_obstacles.size(); i++) {
+            CvBox2D box = permanent_obstacles[i];
+            CvPoint2D32f pt[4];
+            
+            cvBoxPoints(box, pt);
+            
+            for (int j = 0; j < 4; j++) {
+                float px = pt[j].x, py = pt[j].y;
                 
-                nlines++;
-                
-                CvPoint cp1, cp2;
-                cp1.x = p1.x();cp1.y = p1.y();
-                cp2.x = p2.x();cp2.y = p2.y();
-                
-                cvLine(visibility_image, cp1, cp2, CV_RGB(255, 0, 255));
+                if (abs(px - p.x()) < 2. && abs(py - p.y()) < 2.) {
+                    cx = box.center.x;
+                    cy = box.center.y;
+                    goto done;
+                }
             }
         }
         
+        return p;
+        
+    done:
+        float cxv = p.x() - cx, cyv = p.y() - cy;
+        float r = sqrtf(cxv * cxv + cyv * cyv);
+        cxv /= r;
+        cyv /= r;
+        
+        cxv *= 100;
+        cyv *= 100;
+        
+        return VisiLibity::Point(p.x() + cxv, p.y() + cyv);
     }
     
-    printf("%d vertices, %d edges in graph\n", nvertices, nlines);
-    
-    return visibility_image;
-    */
-}
-
-// before - call make_visibility_graph
-// output - image with path drawn on it
-// global variable path_to_goal
-static std::vector<VisiLibity::Point> find_robot_path(CvPoint robotPos, CvPoint targetPos)
-{
-    using namespace VisiLibity;
-
-	std::vector<Point> path_to_goal;
-
-    //printf("drawing shortest path\n");
-    Point robotp(robotPos.x, robotPos.y);
-    Point goalp(targetPos.x, targetPos.y);
-    VisiLibity::Polyline path = environment->shortest_path(robotp, goalp, 5);
+    // input - visibility_mark_obstacle_boxes
+    // output - visibility graph drawn over image
+    // fills out global variable visibility
+    static void make_visibility_graph(int width, int height)
+    {
+        using namespace VisiLibity;
         
-    for (int i = 0; i < path.size(); i++) {
-        Point p = move_point_away(path[i]);
-        path_to_goal.push_back(p);
+        {
+            Point rp[4] = {
+                Point(0, 0),
+                Point(width, 0),
+                Point(width, height),
+                Point(0, height)};
+            std::vector<Point> rpv(rp, rp+4);
+            VisiLibity::Polygon boundary(rpv);
+            
+            environment = new Environment(boundary);
+        }
+        
+        visibility_graph_image = same_size_image_24bit(ObstacleBackground);
+
+        for (int i = 0; i < permanent_obstacles.size(); i++) {
+            CvBox2D box = permanent_obstacles[i];
+            CvPoint2D32f pt[4];
+            Point pp[4];
+            
+            cvBoxPoints(box, pt);
+            
+            for (int j = 0; j < 4; j++) {
+                pp[j] = Point(pt[j].x, pt[j].y);
+            }
+            
+            std::vector<Point> pv(pp, pp+4);
+            VisiLibity::Polygon hole(pv);
+            environment->add_hole(hole);
+            
+            for (int j = 0; j < 4; j++) {
+                cvLine(visibility_graph_image, cvPointFrom32f(pt[j]), cvPointFrom32f(pt[(j+1)%4]), CV_RGB(0, 0, 255));
+            }
+        }
+        
+        environment->enforce_standard_form();
+        
+        //printf("vis valid %d area %f dia %f\n", visibility->is_valid(), visibility->area(), visibility->diameter());
+        
+        //printf("drawing visibility graph\n");
+        
+        int nlines = 0, nvertices = 0;
+        
+        {
+            Visibility_Graph graph(*environment);
+            nvertices = graph.n();
+            
+            for (int i = 0; i < nvertices; i++) {
+                Point &p1 = (*environment)(i);
+                for (int j = 0; j < nvertices; j++) {
+                    Point &p2 = (*environment)(j);
+                    if (!graph(i, j) || (j > i && graph(j, i))) continue;
+                    
+                    nlines++;
+                    
+                    CvPoint cp1, cp2;
+                    cp1.x = p1.x();cp1.y = p1.y();
+                    cp2.x = p2.x();cp2.y = p2.y();
+                    
+                    cvLine(visibility_graph_image, cp1, cp2, CV_RGB(255, 0, 255));
+                }
+            }
+            
+        }
+        
+        cvShowImage("visibility graph", visibility_graph_image);
+        //printf("%d vertices, %d edges in graph\n", nvertices, nlines);        
     }
     
-    for (int i = 0; i < (path.size()-1); i++) {
-        Point p  = path_to_goal[i];
-        Point p1 = path_to_goal[i+1];
-        CvPoint cp1, cp2;
-        cp1.x = p.x(); cp1.y = p.y();
-        cp2.x = p1.x();cp2.y = p1.y();
+    // before - call make_visibility_graph
+    // output - image with path drawn on it
+    // global variable path_to_goal
+    static std::vector<VisiLibity::Point> find_robot_path(CvPoint robotPos, CvPoint targetPos)
+    {
+        using namespace VisiLibity;
         
-        dprintf("p #%d: x %d y %d -> x %d y %d\n", i, cp1.x, cp1.y, cp2.x, cp2.y);
+        std::vector<Point> path_to_goal;
         
-        //cvLine(visibility_graph_image, cp1, cp2, CV_RGB(255, 255, 255), 4, 8, 0);
+        //printf("drawing shortest path\n");
+        Point robotp(robotPos.x, robotPos.y);
+        Point goalp(targetPos.x, targetPos.y);
+        VisiLibity::Polyline path = environment->shortest_path(robotp, goalp, 5);
+        
+        for (int i = 0; i < path.size(); i++) {
+            Point p = move_point_away(path[i]);
+            path_to_goal.push_back(p);
+        }
+        
+        for (int i = 0; i < (path.size()-1); i++) {
+            Point p  = path_to_goal[i];
+            Point p1 = path_to_goal[i+1];
+            CvPoint cp1, cp2;
+            cp1.x = p.x(); cp1.y = p.y();
+            cp2.x = p1.x();cp2.y = p1.y();
+            
+            dprintf("p #%d: x %d y %d -> x %d y %d\n", i, cp1.x, cp1.y, cp2.x, cp2.y);
+            
+            cvLine(visibility_graph_image, cp1, cp2, CV_RGB(255, 255, 255), 4, 8, 0);
+        }
+        
+        cvShowImage("visibility graph", visibility_graph_image);
+        
+        //return visibility_graph_image;
+        return path_to_goal;
     }
-    
-    //return visibility_graph_image;
-	return path_to_goal;
-}
 }
 
 #pragma mark -- vision
@@ -530,7 +541,7 @@ static void setBackground(){
 	while(1){
         key = cvWaitKey(30);
         img = fetch_camera_image();
-
+        
         cvShowImage("Display", img);
         if(key == '1')
             break;
@@ -547,21 +558,21 @@ static void resetGoalObstacleBackground(CvPoint robot, CvPoint enemy, CvPoint go
     int key, backr, backg, backb;
     IplImage* img = NULL;
 	img = fetch_camera_image();
-
-	//while(1){
-      //  key = cvWaitKey(30);
     
-        //cvShowImage("Display", img);
-        //if(key == '2')
-         //   break;
-		//cvReleaseImage(&img);
+	//while(1){
+    //  key = cvWaitKey(30);
+    
+    //cvShowImage("Display", img);
+    //if(key == '2')
+    //   break;
+    //cvReleaseImage(&img);
 	//}
     IplImage* temp = cvCloneImage(GoalObstacleBackground);
     GoalObstacleBackground = cvCloneImage(img);
 	cvSmooth(img, GoalObstacleBackground, CV_BILATERAL,5,5,50,50);
     cvReleaseImage(&img);
     img = cvCloneImage(GoalObstacleBackground);
-
+    
 	for(int i = 0; i < img->height; i++) {
 		for(int j = 0; j < img->width; j++) {
 			int r, g, b;
@@ -570,43 +581,42 @@ static void resetGoalObstacleBackground(CvPoint robot, CvPoint enemy, CvPoint go
 			b = pixRGB(img, j, i, 0);
 			
 			backr = pixRGB(background, j, i, 2);
-			backr = pixRGB(background, j, i, 1);
-			backr = pixRGB(background, j, i, 0);			
-
+			backg = pixRGB(background, j, i, 1);
+			backb = pixRGB(background, j, i, 0);			
+            
             //now we have pulled out the rgb values in the original background and the current image.
 			if((i>goal1.x-25)&&(i<goal1.x+25)&&(i>goal1.y-25)&&(i<goal1.y+25)||
-				(i>goal2.x-25)&&(i<goal2.x+25)&&(i>goal2.y-25)&&(i<goal2.y+25)){
+               (i>goal2.x-25)&&(i<goal2.x+25)&&(i>goal2.y-25)&&(i<goal2.y+25)){
 				//if the pixel is near the goal, we just copy in our old goal images
-					pixRGB(GoalObstacleBackground, j, i, 2) = pixRGB(temp, j, i, 2);
-					pixRGB(GoalObstacleBackground, j, i, 1) = pixRGB(temp, j, i, 1);
-					pixRGB(GoalObstacleBackground, j, i, 0) = pixRGB(temp, j, i, 0);
+                pixRGB(GoalObstacleBackground, j, i, 2) = pixRGB(temp, j, i, 2);
+                pixRGB(GoalObstacleBackground, j, i, 1) = pixRGB(temp, j, i, 1);
+                pixRGB(GoalObstacleBackground, j, i, 0) = pixRGB(temp, j, i, 0);
 			}	
 			else if((i>robot.x-25)&&(i<robot.x+25)&&(i>robot.y-25)&&(i<robot.y+25)||
-				(i>enemy.x-25)&&(i<enemy.x+25)&&(i>enemy.y-25)&&(i<enemy.y+25))
+                    (i>enemy.x-25)&&(i<enemy.x+25)&&(i>enemy.y-25)&&(i<enemy.y+25))
 				//(i>goal1.x-25)&&(i<goal1.x+25)&&(i>goal1.y-25)&&(i<goal1.y+25)||
 				//(i>goal2.x-25)&&(i<goal2.x+25)&&(i>goal2.y-25)&&(i<goal2.y+25))
-				{
-            		pixRGB(GoalObstacleBackground, j, i, 2) = backr;
-					pixRGB(GoalObstacleBackground, j, i, 1) = backg;
-					pixRGB(GoalObstacleBackground, j, i, 0) = backb;
-				}
+            {
+                pixRGB(GoalObstacleBackground, j, i, 2) = backr;
+                pixRGB(GoalObstacleBackground, j, i, 1) = backg;
+                pixRGB(GoalObstacleBackground, j, i, 0) = backb;
+            }
 			else
 			{
 				int diff = (r-backr)*(r-backr) + (g-backg)*(g-backg)+ (b-backb)*(b-backb);
-            
+                
 				diff = sqrt((double)diff);
 				if (diff > 255) diff = 255;
 				if (diff < 0) diff = 0;
 				
-				if (diff > 20) diff = 255;
-				
-				((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 2] = diff;
-				((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 1] = 0;
-				((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 0] = 0;
+                if (diff <= 100) diff = 0;
+                if (diff >= 120) diff = 255;
+                
+                pixRGB(img, j, i, 2) = pixRGB(img, j, i, 1) = pixRGB(img, j, i, 0) = diff;
 			}
 		}
 	}
-        
+    
     cvErode(img, img);
     cvDilate(img, img);
     
@@ -617,11 +627,11 @@ static void resetGoalObstacleBackground(CvPoint robot, CvPoint enemy, CvPoint go
 static void setGoalObstacleBackground(){
 	int key, backr, backg, backb;
 	IplImage* img = NULL;
-
+    
 	while(1){
         key = cvWaitKey(30);
         img = fetch_camera_image();
-
+        
         cvShowImage("Display", img);
         if(key == '3')
             break;
@@ -631,7 +641,7 @@ static void setGoalObstacleBackground(){
 	cvSmooth(img, GoalObstacleBackground, CV_BILATERAL,5,5,50,50);
     cvReleaseImage(&img);
     img = cvCloneImage(GoalObstacleBackground);
-
+    
 	for(int i = 0; i < img->height; i++) {
 		for(int j = 0; j < img->width; j++) {
 			int r, g, b;
@@ -642,16 +652,16 @@ static void setGoalObstacleBackground(){
 			backr = pixRGB(ObstacleBackground, j, i, 2);
 			backg = pixRGB(ObstacleBackground, j, i, 1);
 			backb = pixRGB(ObstacleBackground, j, i, 0);			
-
+            
             int diff = (r-backr)*(r-backr) + (g-backg)*(g-backg) + (b-backb)*(b-backb);
             
             diff = sqrt((double)diff);
             if (diff > 255) diff = 255;
             if (diff < 0) diff = 0;
-						
+            
             if (diff <= 100) diff = 0;
 			if (diff >= 120) diff = 255;
-
+            
 			pixRGB(img, j, i, 2) = pixRGB(img, j, i, 1) = pixRGB(img, j, i, 0) = diff;
 		}
 	} // we have now set our images to be pure red wherever the goals are. We need to perform blob detection
@@ -691,11 +701,11 @@ static void setGoalObstacleBackground(){
 static void setObstacleBackground(){
     int key, backr, backg, backb;
     IplImage* img = NULL;
-
+    
 	while(1){
         key = cvWaitKey(30);
         img = fetch_camera_image();
-
+        
         cvShowImage("Display", img);
         if(key == '2')
             break;
@@ -706,15 +716,17 @@ static void setObstacleBackground(){
 	cvSmooth(img, ObstacleBackground, CV_BILATERAL,5,5,50,50);
     cvReleaseImage(&img);
     img = cvCloneImage(ObstacleBackground);
-
+    
 	for(int i = 0; i < img->height; i++) {
 		for(int j = 0; j < img->width; j++) {
-			int r = ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 2];
-            int g = ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 1];
-            int b = ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 0];
-			backr = ((uchar *)(background->imageData + i*img->widthStep))[j*img->nChannels + 2];
-			backg = ((uchar *)(background->imageData + i*img->widthStep))[j*img->nChannels + 1];
-			backb = ((uchar *)(background->imageData + i*img->widthStep))[j*img->nChannels + 0];
+            int r, g, b;
+			r = pixRGB(img, j, i, 2);
+			g = pixRGB(img, j, i, 1);
+			b = pixRGB(img, j, i, 0);
+			
+			backr = pixRGB(background, j, i, 2);
+			backg = pixRGB(background, j, i, 1);
+			backb = pixRGB(background, j, i, 0);
             
             int diff = (r-backr)*(r-backr) + (g-backg)*(g-backg)+ (b-backb)*(b-backb);
             
@@ -722,14 +734,13 @@ static void setObstacleBackground(){
             if (diff > 255) diff = 255;
             if (diff < 0) diff = 0;
             
-            if (diff > 20) diff = 255;
+            if (diff <= 100) diff = 0;
+			if (diff >= 120) diff = 255;
             
-            ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 2] = diff;
-            ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 1] = 0;
-            ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 0] = 0;
+			pixRGB(img, j, i, 2) = pixRGB(img, j, i, 1) = pixRGB(img, j, i, 0) = diff;
 		}
 	}
-        
+    
     cvErode(img, img);
     cvDilate(img, img);
     
@@ -742,8 +753,8 @@ static int HSV_filter1(int h, int s, int v, int threshold) {
     //	int FilteredColor[3] = {200, 250, 10}; // This one is Orange HSV
 	int FilteredColor[3] = {200, 20,200}; //this works for pink, but not white.
 	int diff =  (FilteredColor[0]-h)*(FilteredColor[0]-h) +
-                (FilteredColor[1]-s)*(FilteredColor[1]-s) + 
-                (FilteredColor[2]-v)*(FilteredColor[2]-v);
+    (FilteredColor[1]-s)*(FilteredColor[1]-s) + 
+    (FilteredColor[2]-v)*(FilteredColor[2]-v);
 	
 	if(diff < threshold) return abs(diff-threshold); /** If here, it has passed! */
 	return 0; /** With 0 this is discarded */
@@ -755,9 +766,9 @@ static int RGB_filter1(int r, int g, int b, int threshold){
     int black = (r+g+b) < 25;
     if (black) return 0;
 	int diff = (FilteredColor[0] - r)*(FilteredColor[0]-r)+
-                (FilteredColor[1] - g)*(FilteredColor[1] - g)+
-                (FilteredColor[2] - b)*(FilteredColor[2] - b);
-
+    (FilteredColor[1] - g)*(FilteredColor[1] - g)+
+    (FilteredColor[2] - b)*(FilteredColor[2] - b);
+    
     diff = sqrt((double)diff);
     if (diff > 255) diff = 255;
     if (diff < 0) diff = 0;
@@ -770,21 +781,21 @@ static int RGB_filter1(int r, int g, int b, int threshold){
 
 static int RGB_filter2(int r, int g, int b, int threshold){
 	int FilteredColor[3] = {40, 60, 160}; //the RGB values for the blue felt.
-
+    
     int black = (r+g+b) < 25;
     if (black) return 0;
     
 	int diff = (FilteredColor[0] - r)*(FilteredColor[0]-r)+
-                (FilteredColor[1] - g)*(FilteredColor[1] - g)+
-                (FilteredColor[2] - b)*(FilteredColor[2] - b);
-
+    (FilteredColor[1] - g)*(FilteredColor[1] - g)+
+    (FilteredColor[2] - b)*(FilteredColor[2] - b);
+    
     diff = sqrt((double)diff);
     if (diff > 255) diff = 255;
     if (diff < 0) diff = 0;
     diff = 255 - diff;
     
     if (diff <= 180) diff = 0;
-
+    
     return diff;
 }
 
@@ -796,17 +807,15 @@ static int RGB_filter3(int r, int g, int b, int threshold){
     if (black) return 0;
     
 	int diff = (FilteredColor[0] - r)*(FilteredColor[0]-r)+
-                (FilteredColor[1] - g)*(FilteredColor[1] - g)+
-                (FilteredColor[2] - b)*(FilteredColor[2] - b);
-
+    (FilteredColor[1] - g)*(FilteredColor[1] - g)+
+    (FilteredColor[2] - b)*(FilteredColor[2] - b);
+    
     diff = sqrt((double)diff);
     if (diff > 255) diff = 255;
     if (diff < 0) diff = 0;
     diff = 255 - diff;
     return diff;
 }
-
-
 
 void newEnemyPos(CvPoint place){
 	vector<CvPoint> newplaces;
@@ -818,18 +827,18 @@ void newEnemyPos(CvPoint place){
 	else{
 		enemyFound = false;
 		if((enemyPositions.at(4).x > (place.x - 300))&&(enemyPositions.at(4).x < (place.x + 300))&&
-			(enemyPositions.at(4).y > (place.y - 300))&&(enemyPositions.at(4).y < (place.y + 300))){
-				enemyPos = place;
-				enemyFound = true;
+           (enemyPositions.at(4).y > (place.y - 300))&&(enemyPositions.at(4).y < (place.y + 300))){
+            enemyPos = place;
+            enemyFound = true;
 		}
-
+        
 		for(int i = 1; i < 5; i ++){
 			newplaces.push_back(enemyPositions.at(i+1));
 		}
 		newplaces.push_back(place);
 		enemyPositions = newplaces;
 	}
-
+    
 }
 // finds robot and fruit
 static ObjectPos find_objects(bool find_fruit)
@@ -844,7 +853,7 @@ static ObjectPos find_objects(bool find_fruit)
 	ObjectPos pos;
     CvPoint Left, Right;
 	pos.found = 0;
-
+    
     input = fetch_camera_image();
     //cvDestroyWindow("Display");
     cvWaitKey(1);
@@ -862,20 +871,20 @@ static ObjectPos find_objects(bool find_fruit)
     imgCopy = cvCloneImage(img);
     cvSmooth(imgCopy, img, CV_BILATERAL,5,5,50,50);
     cvReleaseImage(&imgCopy);
-            
+    
 	for(int i = 0; i < img->height; i ++){
 		for(int j = 0; j < img->width; j++){
-			int r,g,b, backr, backg, backb;
-			r = ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 2];
-            g = ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 1];
-            b = ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 0];
-			backr = ((uchar *)(GoalObstacleBackground->imageData + i*GoalObstacleBackground->widthStep))[j*GoalObstacleBackground->nChannels + 2];
-			backg = ((uchar *)(GoalObstacleBackground->imageData + i*GoalObstacleBackground->widthStep))[j*GoalObstacleBackground->nChannels + 1];
-			backb= ((uchar *)(GoalObstacleBackground->imageData + i*GoalObstacleBackground->widthStep))[j*GoalObstacleBackground->nChannels + 0];
+            int r, g, b, backr, backg, backb;
+			r = pixRGB(img, j, i, 2);
+			g = pixRGB(img, j, i, 1);
+			b = pixRGB(img, j, i, 0);
+			
+			backr = pixRGB(GoalObstacleBackground, j, i, 2);
+			backg = pixRGB(GoalObstacleBackground, j, i, 1);
+			backb = pixRGB(GoalObstacleBackground, j, i, 0);
+            
 			if(((r-backr)*(r-backr) + (g-backg)*(g-backg)+ (b-backb)*(b-backb)) < 1000){
-				((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 2] = 0;
-				((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 1] = 0;
-				((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 0] = 0;
+                pixRGB(img, j, i, 2) = pixRGB(img, j, i, 1) = pixRGB(img, j, i, 0) = 0;
 			}
 		}
 	}
@@ -883,10 +892,11 @@ static ObjectPos find_objects(bool find_fruit)
 	//cvShowImage("Background subtracted", img);
 	for(int i = 0; i < img->height; i++) {
 		for(int j = 0; j < img->width; j++) {
-			int r = ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 2];
-            int g = ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 1];
-            int b = ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 0];
-
+            int r, g, b;
+			r = pixRGB(img, j, i, 2);
+			g = pixRGB(img, j, i, 1);
+			b = pixRGB(img, j, i, 0);
+            
             ((uchar *)(i1->imageData + i*i1->widthStep))[j] = RGB_filter1(r, g, b, 6000);
 			((uchar *)(rob->imageData + i*rob->widthStep))[j] = RGB_filter2(r, g, b, 6000);
             //((uchar *)(fruit->imageData + i*fruit->widthStep))[j] = RGB_filter3(r,g,b, 6000);
@@ -903,21 +913,21 @@ static ObjectPos find_objects(bool find_fruit)
     cvErode(enemy, enemy);
     
     /*
-    cvShowImage("robotLeft", rob);
-    cvShowImage("robotRight", i1);
-    
+     cvShowImage("robotLeft", rob);
+     cvShowImage("robotRight", i1);
+     
      cvShowImage("fruit", fruit);
-    */
+     */
     
     CBlobResult robBlobs = CBlobResult(rob, NULL, 0, true);
     CBlobResult blobs = CBlobResult(i1, NULL, 0, true);
     //CBlobResult fruitBlob = CBlobResult(fruit, NULL, 0, true);
     CBlobResult enemys = CBlobResult(enemy, NULL, 0, true);
-
+    
     //fruitBlob.Filter(fruitBlob, B_INCLUDE, CBlobGetMean(), B_GREATER, 120);
     //fruitBlob.Filter(fruitBlob, B_INCLUDE, CBlobGetArea(), B_GREATER, 20);
     //fruitBlob.Filter(fruitBlob, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
-
+    
     blobs.Filter(blobs, B_INCLUDE, CBlobGetMean(), B_GREATER, 130);
     blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 50);
     blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
@@ -925,12 +935,10 @@ static ObjectPos find_objects(bool find_fruit)
 	enemys.Filter(enemys, B_INCLUDE, CBlobGetMean(), B_GREATER, 130);
 	enemys.Filter(enemys, B_INCLUDE, CBlobGetArea(), B_GREATER, 50);
 	enemys.Filter(enemys, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
-
+    
     robBlobs.Filter(robBlobs, B_INCLUDE, CBlobGetMean(), B_GREATER, 130);
     robBlobs.Filter(robBlobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 20);
     robBlobs.Filter(robBlobs, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
-
-	
 	
 	CBlob test;
     // find right side of robot
@@ -940,7 +948,7 @@ static ObjectPos find_objects(bool find_fruit)
 		CBlob blobArea = blobs.GetBlob(i);
         CvBox2D BlobEllipse = blobArea.GetEllipse();
         CvPoint centrum = cvPoint(BlobEllipse.center.x, BlobEllipse.center.y);
-
+        
         Right = centrum;
         found_robot = 1;
         if(blobArea.Area() > 10)
@@ -953,18 +961,18 @@ static ObjectPos find_objects(bool find_fruit)
 	newEnemyPos(cvPoint(testEllipse.center.x, testEllipse.center.y));
     // find fruit
     /*for (int i = 0; i < fruitBlob.GetNumBlobs(); i++ )
-    {
-        CBlob fruitBlobArea = fruitBlob.GetBlob(i);
-        CvBox2D BlobEllipse = fruitBlobArea.GetEllipse();
-        CvPoint centrum = cvPoint(BlobEllipse.center.x, BlobEllipse.center.y);
-
-        pos.fruitPos = centrum;
-        found_fruit = 1;
-        if(fruitBlobArea.Area() > 10)
-        { fruitBlobArea.FillBlob(input, cvScalar(255, 0, 250));
-            cvCircle(input, centrum, 20, CV_RGB(250, 0, 250),2, 1);}
-    }*/
-        
+     {
+     CBlob fruitBlobArea = fruitBlob.GetBlob(i);
+     CvBox2D BlobEllipse = fruitBlobArea.GetEllipse();
+     CvPoint centrum = cvPoint(BlobEllipse.center.x, BlobEllipse.center.y);
+     
+     pos.fruitPos = centrum;
+     found_fruit = 1;
+     if(fruitBlobArea.Area() > 10)
+     { fruitBlobArea.FillBlob(input, cvScalar(255, 0, 250));
+     cvCircle(input, centrum, 20, CV_RGB(250, 0, 250),2, 1);}
+     }*/
+    
     //robotPos.clear();
     //find other side of robot
     for (int i = 0; i < robBlobs.GetNumBlobs(); i++ )
@@ -973,7 +981,7 @@ static ObjectPos find_objects(bool find_fruit)
         CBlob robBlobArea = robBlobs.GetBlob(i);
         CvBox2D BlobEllipse = robBlobArea.GetEllipse();
         CvPoint centrum = cvPoint(BlobEllipse.center.x, BlobEllipse.center.y);
-
+        
         Left = centrum;
         if (found_robot==1)
             found_robot++;
@@ -990,7 +998,7 @@ static ObjectPos find_objects(bool find_fruit)
         double temp = sqrt((double)distance(Left.x,Left.y,Right.x,Right.y));
         temp = acos((Right.x-Left.x)/temp);
         temp = (temp/M_PI)*180;
-
+        
         if(((Right.y - Left.y) < 0) && ((Right.x-Left.x) > 0)){
             temp = 360 -temp;
         }
@@ -1011,10 +1019,10 @@ static ObjectPos find_objects(bool find_fruit)
         pos.robotPos.x = (int)(Right.x + Left.x)/2;
         pos.robotPos.y = (int)(Right.y + Left.y)/2;
     }
- 
+    
     blobs.ClearBlobs();
     cvReleaseImage(&img);
-
+    
     //cvReleaseImage(&fruit);
     cvReleaseImage(&rob);
     robBlobs.ClearBlobs();
@@ -1026,50 +1034,50 @@ static ObjectPos find_objects(bool find_fruit)
     
     // here is where we are going to draw in our squares.
     /*
-    if(path.size() > 0){
-        int xdiff, ydiff;
-        if(path.size() > 20){
-            CvPoint newest, older;
-            newest = path.back();
-            older = path.at(path.size()-10);
-            xdiff= newest.x - older.x;
-            ydiff = newest.y -older.y;
-        }
-        else{
-            xdiff = 0;
-            ydiff = 0;
-        }
-        robotPoint = path.back();
-        
-        //int shapeSize = 100;
-        for(int i = 0; i < path.size(); i ++){
-            cvCircle(input, path.at(i),1, cyan, 2);
-        }
-    }
-    */
- 
-   // cvNamedWindow("Output Image - Blob Demo", 1);
-/*
-    {
-        static int localCount = 0;
-        if(localCount % 5 == 0 && 0){
-            localCount = 0;
-            string imageName;
-            std::stringstream out;
-            out << "trace/trace" << imageCount <<".jpg";
-            imageName = out.str();
-            cvSaveImage(imageName.c_str(), input);
-            imageCount= imageCount + 1;
-        }
-        localCount++;
-    }
-  */  
+     if(path.size() > 0){
+     int xdiff, ydiff;
+     if(path.size() > 20){
+     CvPoint newest, older;
+     newest = path.back();
+     older = path.at(path.size()-10);
+     xdiff= newest.x - older.x;
+     ydiff = newest.y -older.y;
+     }
+     else{
+     xdiff = 0;
+     ydiff = 0;
+     }
+     robotPoint = path.back();
+     
+     //int shapeSize = 100;
+     for(int i = 0; i < path.size(); i ++){
+     cvCircle(input, path.at(i),1, cyan, 2);
+     }
+     }
+     */
+    
+    // cvNamedWindow("Output Image - Blob Demo", 1);
+    /*
+     {
+     static int localCount = 0;
+     if(localCount % 5 == 0 && 0){
+     localCount = 0;
+     string imageName;
+     std::stringstream out;
+     out << "trace/trace" << imageCount <<".jpg";
+     imageName = out.str();
+     cvSaveImage(imageName.c_str(), input);
+     imageCount= imageCount + 1;
+     }
+     localCount++;
+     }
+     */  
     cvShowImage("Output Image - Blob Demo", input);
     cvWaitKey(1);
-
+    
     cvReleaseImage(&input);
     
-    int sdistance = distance(pos.fruitPos.x, pos.fruitPos.y, pos.robotPos.x, pos.robotPos.y);
+    int sdistance = pdistance(pos.fruitPos, pos.robotPos);
     
     dprintf("found robot %d (%d,%d), angle %d, fruit %d (%d,%d), dist %f\n", found_robot, pos.robotPos.x, pos.robotPos.y, pos.robotOrientation, found_fruit, pos.fruitPos.x, pos.fruitPos.y, sqrt((double)sdistance));
     
@@ -1096,7 +1104,7 @@ static void idleAwaitingObjects()
         key = cvWaitKey(30);
         img = fetch_camera_image();
         
-        //cvShowImage("Display", img);
+        cvShowImage("Display", img);
         cvReleaseImage(&img);
         if(key == '4')
             break;
@@ -1110,9 +1118,9 @@ int selectGoal(ObjectPos pos, int foundEnemy){
 	if(!foundEnemy){
 		int goal1dist;
 		int goal2dist;
-
-		goal1dist = sqrt((double) ((pos.robotPos.x-goal1.x)*(pos.robotPos.x-goal1.x) + (pos.robotPos.y-goal1.y)*(pos.robotPos.y-goal1.y)));
-		goal2dist = sqrt((double) ((pos.robotPos.x-goal2.x)*(pos.robotPos.x-goal2.x) + (pos.robotPos.y-goal2.y)*(pos.robotPos.y-goal2.y)));
+        
+		goal1dist = pdistance(pos.robotPos, goal1);
+		goal2dist = pdistance(pos.robotPos, goal2);
 		if(goal2dist < goal1dist){
 			return 2;
 		}
@@ -1126,11 +1134,11 @@ int selectGoal(ObjectPos pos, int foundEnemy){
 		int goal2dist;
 		int goal1enemy;
 		int goal2enemy;
-		goal1dist = sqrt((double) ((pos.robotPos.x-goal1.x)*(pos.robotPos.x-goal1.x) + (pos.robotPos.y-goal1.y)*(pos.robotPos.y-goal1.y)));
-		goal2dist = sqrt((double) ((pos.robotPos.x-goal2.x)*(pos.robotPos.x-goal2.x) + (pos.robotPos.y-goal2.y)*(pos.robotPos.y-goal2.y)));
-		goal1enemy = sqrt((double) ((enemyPos.x-goal1.x)*(enemyPos.x-goal1.x) + (enemyPos.y-goal1.y)*(enemyPos.y-goal1.y)));
-		goal2enemy = sqrt((double) ((enemyPos.x-goal2.x)*(enemyPos.x-goal2.x) + (enemyPos.y-goal2.y)*(enemyPos.y-goal2.y)));
-		if(abs(goal1enemy - goal2enemy) < 50){
+		goal1dist = pdistance(pos.robotPos, goal1);
+		goal2dist = pdistance(pos.robotPos, goal2);
+		goal1enemy = pdistance(enemyPos, goal1);
+		goal2enemy = pdistance(enemyPos, goal2);
+		if(abs(goal1enemy - goal2enemy) < 50*50){
 			if(goal2dist < goal1dist){
 				return 2;
 			}
@@ -1158,31 +1166,26 @@ void giveOrders()
 	{
 		if(side == DirLeft)
 			rovio_DiagForLeft(3);
-
 		else
 			rovio_DiagForRight(3); 
-
 		return;
 	}
-
+    
 	if((temp_angle >=80.0) && (temp_angle <=105.0))
 	{
 		if(side == DirLeft)
 		    rovio_driveLeft(3);
-
 		else
 			rovio_driveRight(3);
-
 		return;
 	}
-
-	
+    
 	while(temp_angle >=0) 
     {
         temp_angle-=20;
         counter++;
     }
-
+    
 	if (side == DirLeft)
     {
 		if(counter != 0)
@@ -1216,7 +1219,6 @@ void moveToPoint(CvPoint p, ObjectPos pos){
 	}
 }
 
-
 void processCamera()
 {
     static int first = 1, placed = 0, found=0, goal = -1;
@@ -1227,15 +1229,14 @@ void processCamera()
         setBackground();
         setObstacleBackground();
 		setGoalObstacleBackground();
-	
-    
-    //cvShowImage("visibility graph", visibility_image);
-    cvWaitKey(3);
-
-    if (!placed) {
-        idleAwaitingObjects();
-        placed = 1;
-    }
+        
+        //cvShowImage("visibility graph", visibility_image);
+        cvWaitKey(3);
+        
+        if (!placed) {
+            idleAwaitingObjects();
+            placed = 1;
+        }
 		pos = find_robot();
 		int misses = 0;
 		while(((pos.found != true) || (enemyFound !=true)) && (misses < 5)){
@@ -1268,17 +1269,16 @@ void processCamera()
 			for(int i = 0; i < path.size(); i ++){
 				//int px = (int)(path.at(i)).x();
 				//int py = (int)(path.at(i)).y();
-
+                
 				moveToPoint((cvPoint(path.at(i).x(), path.at(i).y())),pos);
-
 			}
 			dprintf("--\ndrive to fruit\n\n");
 			movement::drive_to_goal(path);
-        
+            
 			//dprintf("--\ndrive back\n\n");
 			//rovio_camera_height(low);
 			//rovio_turn(TurnLeft, 10);
-
+            
 			//path = visibility::find_robot_path(pos.robotPos, originalPos);
 			//movement::drive_to_goal(path);   
 		}
@@ -1291,25 +1291,24 @@ void processCamera()
 			//if(goal == 1){
 			path = visibility::find_robot_path(pos.robotPos, enemyPos);
 			movement::drive_to_goal(path);
-				//of couse, the enemy will move, so we will recalculate the path.
-
-
+            //of couse, the enemy will move, so we will recalculate the path.
+            
 			//}
 			//else{
-				//path = visibility::find_robot_path(pos.robotPos, goal2);
+            //path = visibility::find_robot_path(pos.robotPos, goal2);
 			//}
 			//path = visibility::find_robot_path(pos.robotPos, pos.fruitPos);
 			//cvShowImage("visibility graph", visibility_image);
 			cvWaitKey(3);
 			//rovio_camera_height(middle);
-        
+            
 			//dprintf("--\ndrive to fruit\n\n");
 			//movement::drive_to_goal(path);
-        
+            
 			//dprintf("--\ndrive back\n\n");
 			//rovio_camera_height(low);
 			//rovio_turn(TurnLeft, 10);
-
+            
 			//path = visibility::find_robot_path(pos.robotPos, originalPos);
 			//movement::drive_to_goal(path);   
 		}
@@ -1325,11 +1324,11 @@ void initCameras(){
 		sprintf(cname, "Data/Camera%d.jpg", numCameras);
 		sprintf(cameraName[numCameras], "Data/Camera%d.jpg", numCameras);
         
-	/*	cvNamedWindow(cname);
-		http_fetch(cameraURL[numCameras],cname);
-		images[numCameras] = cvLoadImage(cname);
-		cvShowImage(cameraName[numCameras], images[numCameras]);
-        */
+        /*	cvNamedWindow(cname);
+         http_fetch(cameraURL[numCameras],cname);
+         images[numCameras] = cvLoadImage(cname);
+         cvShowImage(cameraName[numCameras], images[numCameras]);
+         */
 		numCameras++;
 	}
 	infile.close();
