@@ -1021,6 +1021,11 @@ static ObjectPos find_objects(bool find_fruit)
         pos.robotPos.y = (int)(Right.y + Left.y)/2;
     }
     
+	 int drawx = pos.robotPos.x + sin((double)pos.robotOrientation*50);
+     int drawy = pos.robotPos.y - cos((double)pos.robotOrientation*50);
+     cvDrawLine(input, pos.robotPos, cvPoint(drawx,drawy),CV_RGB(0, 250,250));
+     cvShowImage("orientations!!!", input);
+
     blobs.ClearBlobs();
     cvReleaseImage(&img);
     
@@ -1216,6 +1221,7 @@ void moveToPoint(CvPoint p, ObjectPos pos){
 		CvPoint orientation = arbitrary;
 		CvPoint Dest = enemyPos;
 		TriangleAlgorithm(&Robot,&orientation,&Dest);
+		giveOrders();
 		pos = find_robot();
 	}
 }
