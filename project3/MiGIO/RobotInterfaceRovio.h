@@ -22,7 +22,8 @@ typedef enum RovioDirection {
     DirLeftForward = 7,
     DirRightForward,
     DirLeftBackward,
-    DirRightBackward
+    DirRightBackward,
+	DirCenter
 } RovioDirection;
 
 typedef enum vertical_class {

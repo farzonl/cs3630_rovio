@@ -5,7 +5,7 @@ CvPoint chordPoint;
 CvPoint chordMP;
 CvPoint robot;
 CvPoint dest;
-Direction side;
+RovioDirection side;
 double Angle;
 
 //Matrix3d a;
@@ -86,17 +86,17 @@ CvPoint getCPoint(CvPoint* robot, CvPoint* orientation, double radius)
 double getDir(double angle)
 {
 	if(robot.x > dest.x)
-		side = Direction::left;
+		side = DirLeft;
 	//else if (R->getX() == L->getX()) // <--- this should be fuzzy
 	else if ((angle == 0)||((angle < 20)&&(angle > 0))||((angle > -20)&&(angle < 0)))
-		side = Direction::center;
+		side = DirCenter;
 	else
-		side = Direction::right;
+		side = DirRight;
 
-	if((dest.y < robot.y)&&(dest.x < robot.x)&& (side == Direction::left))
+	if((dest.y < robot.y)&&(dest.x < robot.x)&& (side == DirLeft))
 		angle = 180 - angle; 
 
-	if((dest.y < robot.y)&&(dest.x >= robot.x)&& (side == Direction::right))
+	if((dest.y < robot.y)&&(dest.x >= robot.x)&& (side == DirRight))
 		angle = 180 - angle; 
 
 	return angle;

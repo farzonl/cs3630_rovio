@@ -657,7 +657,11 @@ static void setGoalObstacleBackground(){
             ((uchar *)(img->imageData + i*img->widthStep))[j*img->nChannels + 0] = diff;
 		}
 	} // we have now set our images to be pure red wherever the goals are. We need to perform blob detection
+	
+	cvShowImage("goals detection", img);
+	
 	//and use the the two blobs as the locations of our goals.
+	try {
 	CBlobResult goals = CBlobResult(img, NULL,0,true);
 	goals.Filter(goals, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
 	goals.Filter(goals, B_INCLUDE, CBlobGetArea(), B_GREATER, 20);
@@ -676,6 +680,10 @@ static void setGoalObstacleBackground(){
 			}
 		}
 	}
+}
+catch (int i) {
+	printf("couldn't find goal blobs, err %d\n", i);
+}
 
 }
 
@@ -1147,7 +1155,7 @@ void giveOrders()
     
 	if((temp_angle >=40.0) && (temp_angle <=65.0))
 	{
-		if(side == Direction::left)
+		if(side == DirLeft)
 			rovio_DiagForLeft(3);
 
 		else
@@ -1158,7 +1166,7 @@ void giveOrders()
 
 	if((temp_angle >=80.0) && (temp_angle <=105.0))
 	{
-		if(side == Direction::left)
+		if(side == DirLeft)
 		    rovio_driveLeft(3);
 
 		else
@@ -1174,14 +1182,14 @@ void giveOrders()
         counter++;
     }
 
-	if (side == Direction::left)
+	if (side == DirLeft)
     {
 		if(counter != 0)
 		{
 			rovio_turnLeftByDegree(counter);
 			rovio_forward(3);
         }
-        else if (side == center)
+        else if (side == DirCenter)
             rovio_forward(3);
         else
         {
@@ -1234,7 +1242,7 @@ void processCamera()
 			misses ++;
 			pos = find_robot();
 		}
-		if(misses = 5){
+		if(misses == 5){
 			while(pos.found != true){
 				pos = find_robot();
 			}
