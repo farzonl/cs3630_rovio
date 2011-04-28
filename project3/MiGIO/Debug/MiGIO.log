@@ -1,0 +1,81 @@
+﻿Build started 4/28/2011 5:06:41 AM.
+     1>Project "C:\Users\farzon\Desktop\p3\project3\MiGIO\MiGIO.vcxproj" on node 2 (build target(s)).
+     1>InitializeBuildStatus:
+         Creating "Debug\MiGIO.unsuccessfulbuild" because "AlwaysCreate" was specified.
+       ClCompile:
+         c:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /IC:\OpenCV2.0\include\opencv /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc100.pdb" /Gd /TP /analyze- /errorReport:prompt CameraInterface.cpp CVConsole.cpp HTTPInterface.cpp Main.cpp orientation.cpp RobotInterface.cpp RobotInterfacePleo.cpp RobotInterfaceRovio.cpp RobotStatus.cpp SerialTerm.cpp visilibity.cpp
+         visilibity.cpp
+     1>c:\users\farzon\desktop\p3\project3\migio\visilibity.cpp(3081): warning C4129: 'E' : unrecognized character escape sequence
+     1>c:\users\farzon\desktop\p3\project3\migio\visilibity.cpp(3087): warning C4129: 'E' : unrecognized character escape sequence
+     1>c:\users\farzon\desktop\p3\project3\migio\visilibity.cpp(3132): warning C4129: 'E' : unrecognized character escape sequence
+     1>c:\users\farzon\desktop\p3\project3\migio\visilibity.cpp(3162): warning C4129: 'E' : unrecognized character escape sequence
+     1>c:\users\farzon\desktop\p3\project3\migio\visilibity.cpp(3166): warning C4129: 'E' : unrecognized character escape sequence
+     1>c:\users\farzon\desktop\p3\project3\migio\visilibity.cpp(3200): warning C4129: 'E' : unrecognized character escape sequence
+     1>c:\users\farzon\desktop\p3\project3\migio\visilibity.cpp(3222): warning C4129: 'E' : unrecognized character escape sequence
+     1>c:\users\farzon\desktop\p3\project3\migio\visilibity.cpp(3283): warning C4129: 'E' : unrecognized character escape sequence
+     1>c:\users\farzon\desktop\p3\project3\migio\visilibity.cpp(3362): warning C4129: 'E' : unrecognized character escape sequence
+     1>c:\users\farzon\desktop\p3\project3\migio\visilibity.cpp(3383): warning C4129: 'E' : unrecognized character escape sequence
+     1>c:\users\farzon\desktop\p3\project3\migio\visilibity.cpp(3403): warning C4129: 'E' : unrecognized character escape sequence
+     1>c:\users\farzon\desktop\p3\project3\migio\visilibity.cpp(3421): warning C4129: 'E' : unrecognized character escape sequence
+         SerialTerm.cpp
+         _WIN32_WINNT not defined. Defaulting to _WIN32_WINNT_MAXVER (see WinSDKVer.h)
+     1>c:\users\farzon\desktop\p3\project3\migio\configuration.h(23): warning C4005: 'DEBUG' : macro redefinition
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\atlmfc\include\atldef.h(107) : see previous definition of 'DEBUG'
+         RobotStatus.cpp
+         RobotInterfaceRovio.cpp
+     1>c:\users\farzon\desktop\p3\project3\migio\robotinterfacerovio.cpp(34): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\stdio.h(371) : see declaration of 'sprintf'
+     1>c:\users\farzon\desktop\p3\project3\migio\robotinterfacerovio.cpp(49): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\stdio.h(371) : see declaration of 'sprintf'
+     1>c:\users\farzon\desktop\p3\project3\migio\robotinterfacerovio.cpp(62): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\stdio.h(371) : see declaration of 'sprintf'
+     1>c:\users\farzon\desktop\p3\project3\migio\robotinterfacerovio.cpp(87): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\stdio.h(371) : see declaration of 'sprintf'
+     1>c:\users\farzon\desktop\p3\project3\migio\robotinterfacerovio.cpp(123): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\stdio.h(371) : see declaration of 'sprintf'
+     1>c:\users\farzon\desktop\p3\project3\migio\robotinterfacerovio.cpp(145): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\stdio.h(371) : see declaration of 'sprintf'
+     1>c:\users\farzon\desktop\p3\project3\migio\robotinterfacerovio.cpp(161): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\stdio.h(371) : see declaration of 'sprintf'
+     1>c:\users\farzon\desktop\p3\project3\migio\robotinterfacerovio.cpp(184): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\stdio.h(371) : see declaration of 'sprintf'
+     1>c:\users\farzon\desktop\p3\project3\migio\robotinterfacerovio.cpp(210): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\stdio.h(371) : see declaration of 'sprintf'
+     1>c:\users\farzon\desktop\p3\project3\migio\robotinterfacerovio.cpp(235): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\stdio.h(371) : see declaration of 'sprintf'
+     1>c:\users\farzon\desktop\p3\project3\migio\robotinterfacerovio.cpp(252): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\stdio.h(371) : see declaration of 'sprintf'
+     1>c:\users\farzon\desktop\p3\project3\migio\robotinterfacerovio.cpp(267): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\stdio.h(371) : see declaration of 'sprintf'
+     1>c:\users\farzon\desktop\p3\project3\migio\robotinterfacerovio.cpp(280): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\stdio.h(371) : see declaration of 'sprintf'
+     1>c:\users\farzon\desktop\p3\project3\migio\robotinterfacerovio.cpp(293): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\stdio.h(371) : see declaration of 'sprintf'
+         RobotInterfacePleo.cpp
+         RobotInterface.cpp
+         orientation.cpp
+     1>c:\opencv2.2\include\opencv2\flann\logger.h(66): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\stdio.h(234) : see declaration of 'fopen'
+     1>c:\users\farzon\desktop\p3\project3\migio\orientation.cpp(18): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>c:\users\farzon\desktop\p3\project3\migio\orientation.cpp(18): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>c:\users\farzon\desktop\p3\project3\migio\orientation.cpp(36): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>c:\users\farzon\desktop\p3\project3\migio\orientation.cpp(38): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>c:\users\farzon\desktop\p3\project3\migio\orientation.cpp(43): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>c:\users\farzon\desktop\p3\project3\migio\orientation.cpp(45): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>c:\users\farzon\desktop\p3\project3\migio\orientation.cpp(62): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>c:\users\farzon\desktop\p3\project3\migio\orientation.cpp(62): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+         Main.cpp
+         HTTPInterface.cpp
+     1>c:\users\farzon\desktop\p3\project3\migio\httpinterface.cpp(41): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\stdio.h(234) : see declaration of 'fopen'
+     1>c:\users\farzon\desktop\p3\project3\migio\httpinterface.cpp(92): warning C4996: 'strdup': The POSIX name for this item is deprecated. Instead, use the ISO C++ conformant name: _strdup. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\string.h(238) : see declaration of 'strdup'
+         CVConsole.cpp
+         CameraInterface.cpp
+     1>c:\users\farzon\desktop\p3\project3\migio\camerainterface.cpp(7): fatal error C1083: Cannot open include file: 'Blob.h': No such file or directory
+         Generating Code...
+     1>Done Building Project "C:\Users\farzon\Desktop\p3\project3\MiGIO\MiGIO.vcxproj" (build target(s)) -- FAILED.
+
+Build FAILED.
+
+Time Elapsed 00:00:37.00
