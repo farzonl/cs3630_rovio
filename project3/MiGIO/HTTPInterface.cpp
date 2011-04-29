@@ -60,13 +60,11 @@ void http_fetch( const char *url, const char *filename ) {
 
 
         if( do_file ) {
-            fflush( fptr );
+            //fflush( fptr );
             fclose( fptr );
         }
 	curl_easy_cleanup(curl); 
 }
-
-
 
 char *http_strdup( const char *url ) {
         CURL *curl = curl_easy_init();  

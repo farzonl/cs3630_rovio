@@ -85,7 +85,6 @@ void rovio_camera_height(vertical_class height)
     sprintf(buf,
              "http://admin:admin1@" ROVIO_HOST ":80"
              "/rev.cgi?Cmd=nav&action=18&drive=%d", code);
-    
     http_fetch(buf, NULL);
 }
 

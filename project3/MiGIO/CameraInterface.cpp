@@ -472,7 +472,8 @@ namespace visibility {
             
         }
         
-        cvShowImage("visibility graph", visibility_graph_image);
+        //cvShowImage("visibility graph", visibility_graph_image);
+		cvSaveImage("trace/visibility.jpg", visibility_graph_image);
         //printf("%d vertices, %d edges in graph\n", nvertices, nlines);        
     }
     
@@ -507,7 +508,7 @@ namespace visibility {
             cvLine(visibility_graph_image, cp1, cp2, CV_RGB(255, 255, 255), 4, 8, 0);
         }
         
-        cvShowImage("visibility graph", visibility_graph_image);
+        //cvShowImage("visibility graph", visibility_graph_image);
         
         //return visibility_graph_image;
         return path_to_goal;
@@ -520,10 +521,10 @@ static IplImage *fetch_camera_image()
 {
     IplImage *img;
 #if 1
-    http_fetch(cameraURL[0],"Data/Camera0.jpg");
-    img=cvLoadImage("Data/Camera0.jpg");
+    //http_fetch(cameraURL[0],"Data/Camera0.jpg");
+    //img=cvLoadImage("Data/Camera0.jpg");
     
-    cvReleaseImage(&img);
+    //cvReleaseImage(&img);
     http_fetch(cameraURL[0],"Data/Camera0.jpg");
     img=cvLoadImage("Data/Camera0.jpg");
 #else
@@ -556,6 +557,7 @@ static void setBackground(){
     background = cvCloneImage(img);
 	cvSmooth(img, background, CV_BILATERAL,5,5,50,50);
 	cvReleaseImage(&img);
+	cvSaveImage("trace/background.jpg", background);
 }
 
 #define pixRGB(img, x, y, c) ((uchar *)(img->imageData + y*img->widthStep))[x*img->nChannels + c]
@@ -668,12 +670,18 @@ static void setGoalObstacleBackground(){
             if (diff > 255) diff = 255;
             if (diff < 0) diff = 0;
             
-            if (diff <= 100) diff = 0;
-			if (diff >= 120) diff = 255;
+            if (diff <= 60) diff = 0;
+			if (diff >= 100) diff = 255;
             
 			pixRGB(img, j, i, 2) = pixRGB(img, j, i, 1) = pixRGB(img, j, i, 0) = diff;
 		}
 	} // we have now set our images to be pure red wherever the goals are. We need to perform blob detection
+	
+    cvErode(img, img);
+    //cvDilate(img, img);
+
+	cvSaveImage("trace/goalobstaclebackground.jpg", GoalObstacleBackground);
+	cvSaveImage("trace/goalthreshold.jpg", img);
 	
 	IplImage *gray = same_size_image_8bit(img);
 	
@@ -685,25 +693,30 @@ static void setGoalObstacleBackground(){
 	
 	//goals.PrintBlobs("/dev/stdout");
 	
-	goals.Filter(goals, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
+	goals.Filter(goals, B_INCLUDE, CBlobGetArea(), B_LESS, 20000);
 	goals.Filter(goals, B_INCLUDE, CBlobGetArea(), B_GREATER, 20);
 	
+	//cvShowImage("goal subtract", gray);
+	
 	//goals.PrintBlobs("/dev/stdout");
+	
+	IplImage *circleimage = cvCloneImage(GoalObstacleBackground);
+	
+	int n = 0;
 	
 	for(int i = 0; i < goals.GetNumBlobs(); i ++){
         CBlob goalArea = goals.GetBlob(i);
         CvBox2D goalEllipse = goalArea.GetEllipse();
 		CvPoint gp = cvPoint(goalEllipse.center.x, goalEllipse.center.y);
-		int n = 0;
 		
         if(goalArea.Area() > 50)
         { 
-			if( i == 0){
+			if(n == 0){
 				goal1.x = goalEllipse.center.x;
 				goal1.y = goalEllipse.center.y;
 				n = 1;
 			}
-			if(i == 1){
+			if(n == 1 && pdistance(gp, goal1) >= 50){
 				goal2.x = goalEllipse.center.x;
 				goal2.y = goalEllipse.center.y;
 				n = 2;
@@ -711,14 +724,16 @@ static void setGoalObstacleBackground(){
 		}
 		
 		if (n == 0)
-		    cvCircle(GoalObstacleBackground, gp, 20, CV_RGB(0, 250, 0), 2, 1);
+		    cvCircle(circleimage, gp, 20, CV_RGB(0, 250, 0), 2, 1);
 		else if (n == 1)
-		    cvCircle(GoalObstacleBackground, gp, 20, CV_RGB(250, 0, 0), 2, 1);
+		    cvCircle(circleimage, gp, 20, CV_RGB(250, 0, 0), 2, 1);
         else
-            cvCircle(GoalObstacleBackground, gp, 20, CV_RGB(0, 0, 250), 2, 1);
+            cvCircle(circleimage, gp, 20, CV_RGB(0, 0, 250), 2, 1);
         
-		cvShowImage("goals", GoalObstacleBackground);
+		//cvShowImage("goals", GoalObstacleBackground);
 	}
+	cvSaveImage("trace/goals.jpg", circleimage);
+	cvReleaseImage(&circleimage);
 }
 
 static void setObstacleBackground(){
@@ -767,7 +782,13 @@ static void setObstacleBackground(){
 	}
     
     cvErode(img, img);
-    cvDilate(img, img);
+    //cvDilate(img, img);
+
+	cvSaveImage("trace/obstaclebackground.jpg", ObstacleBackground);
+	cvSaveImage("trace/obstaclethreshold.jpg", img);
+	
+    //cvErode(img, img);
+    //cvDilate(img, img);
     
     visibility::mark_obstacle_boxes(img);
     visibility::make_visibility_graph(img->width, img->height);    
@@ -799,7 +820,7 @@ static int RGB_filter1(int r, int g, int b, int threshold){
     if (diff < 0) diff = 0;
     diff = 255 - diff;
     
-    if (diff <= 180) diff = 0;
+    if (diff <= 200) diff = 0;
     
     return diff;
 }
@@ -819,7 +840,7 @@ static int RGB_filter2(int r, int g, int b, int threshold){
     if (diff < 0) diff = 0;
     diff = 255 - diff;
     
-    if (diff <= 180) diff = 0;
+    if (diff <= 150) diff = 0;
     
     return diff;
 }
@@ -933,9 +954,16 @@ static ObjectPos find_objects(bool find_fruit)
     
     int found_robot=0, found_fruit=0;
     
+	cvDilate(i1, i1);
+	cvDilate(rob, rob);
+	
     cvErode(i1, i1, NULL, 2);
     cvErode(rob, rob, NULL, 2);
-    cvErode(enemy, enemy);
+    cvErode(enemy, enemy, NULL, 2);
+	
+	cvSaveImage("trace/robotLeft.jpg", rob);
+	cvSaveImage("trace/robotRight.jpg", i1);
+	cvSaveImage("trace/enemy.jpg", enemy);
     
     /*
      cvShowImage("robotLeft", rob);
@@ -954,7 +982,7 @@ static ObjectPos find_objects(bool find_fruit)
     //fruitBlob.Filter(fruitBlob, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
     
     blobs.Filter(blobs, B_INCLUDE, CBlobGetMean(), B_GREATER, 130);
-    blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 50);
+    blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 55);
     blobs.Filter(blobs, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
     
 	enemys.Filter(enemys, B_INCLUDE, CBlobGetMean(), B_GREATER, 130);
@@ -962,64 +990,75 @@ static ObjectPos find_objects(bool find_fruit)
 	enemys.Filter(enemys, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
     
     robBlobs.Filter(robBlobs, B_INCLUDE, CBlobGetMean(), B_GREATER, 130);
-    robBlobs.Filter(robBlobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 20);
+    robBlobs.Filter(robBlobs, B_INCLUDE, CBlobGetArea(), B_GREATER, 55);
     robBlobs.Filter(robBlobs, B_INCLUDE, CBlobGetArea(), B_LESS, 6000);
 	
-	CBlob test;
-    // find right side of robot
-    for (int i = 0; i < blobs.GetNumBlobs(); i++ )
-    {
-		test = blobs.GetBlob(i); // just used to initialize the variable.
-		CBlob blobArea = blobs.GetBlob(i);
-        CvBox2D BlobEllipse = blobArea.GetEllipse();
-        CvPoint centrum = cvPoint(BlobEllipse.center.x, BlobEllipse.center.y);
-        
-        Right = centrum;
-        found_robot = 1;
-        if(blobArea.Area() > 10)
-        { blobArea.FillBlob(input, cvScalar(255, 0, 0));
-            cvCircle(input, centrum, 20, CV_RGB(250, 250, 0),2, 1);}
-    }
-	
-	enemys.GetNthBlob(CBlobGetArea(), 0, test);
-	CvBox2D testEllipse = test.GetEllipse();
-	newEnemyPos(cvPoint(testEllipse.center.x, testEllipse.center.y));
-    // find fruit
-    /*for (int i = 0; i < fruitBlob.GetNumBlobs(); i++ )
-     {
-     CBlob fruitBlobArea = fruitBlob.GetBlob(i);
-     CvBox2D BlobEllipse = fruitBlobArea.GetEllipse();
-     CvPoint centrum = cvPoint(BlobEllipse.center.x, BlobEllipse.center.y);
-     
-     pos.fruitPos = centrum;
-     found_fruit = 1;
-     if(fruitBlobArea.Area() > 10)
-     { fruitBlobArea.FillBlob(input, cvScalar(255, 0, 250));
-     cvCircle(input, centrum, 20, CV_RGB(250, 0, 250),2, 1);}
-     }*/
-    
-    //robotPos.clear();
-    //find other side of robot
+	//robotPos.clear();
+    //find left side of robot
     for (int i = 0; i < robBlobs.GetNumBlobs(); i++ )
     {
         //printf("blobbled");
         CBlob robBlobArea = robBlobs.GetBlob(i);
         CvBox2D BlobEllipse = robBlobArea.GetEllipse();
         CvPoint centrum = cvPoint(BlobEllipse.center.x, BlobEllipse.center.y);
-        
+ 
+		if (robBlobArea.Area() < 260) continue;
+       
+		if (!found_robot) {
         Left = centrum;
-        if (found_robot==1)
-            found_robot++;
-        
-        if(robBlobArea.Area() > 4)
+        found_robot = 1;
+		}
+         
+		printf("Left %d/%d %d,%d area %f\n", i, robBlobs.GetNumBlobs(), Left.x, Left.y, robBlobArea.Area());
+
         { robBlobArea.FillBlob(input, cvScalar(0, 255, 0));
             cvCircle(input, centrum, 20, CV_RGB(250, 250, 0),2, 1);}
+	}
+	
+    // find right side of robot
+    for (int i = 0; found_robot && i < blobs.GetNumBlobs(); i++ )
+    {
+		CBlob blobArea = blobs.GetBlob(i);
+        CvBox2D BlobEllipse = blobArea.GetEllipse();
+        CvPoint centrum = cvPoint(BlobEllipse.center.x, BlobEllipse.center.y);
+        
+		if (blobArea.Area() < 260) continue;
+		printf("Right %d/%d %d,%d area %f dist2 %d\n", i, blobs.GetNumBlobs(), centrum.x, centrum.y, blobArea.Area(), pdistance(centrum, Left));
+		{ blobArea.FillBlob(input, cvScalar(255, 0, 0));
+            cvCircle(input, centrum, 20, CV_RGB(250, 250, 0),2, 1);}
+
+		if (pdistance(centrum, Left) > 50*50) continue;
+
+        Right = centrum;
+        if (found_robot==1)
+			found_robot++;
+		
+		break;
     }
+
+	// find enemy
+	int foundEnemy = 0;
+	for (int i = 0; found_robot && i < enemys.GetNumBlobs(); i++ )
+    {
+		CBlob blob = enemys.GetBlob(i);
+		CvBox2D BlobEllipse = blob.GetEllipse();
+        CvPoint centrum = cvPoint(BlobEllipse.center.x, BlobEllipse.center.y);
+        
+		printf("Enemy %d/%d %d,%d area %f dist2 %d\n", i, enemys.GetNumBlobs(), centrum.x, centrum.y, blob.Area(), pdistance(centrum, Left));
+        cvCircle(input, centrum, 20, CV_RGB(200, 200, 200),2, 1);
+
+		if (pdistance(centrum, Left) < 60*60) continue;
+		
+		if (!foundEnemy) {
+			foundEnemy = 1;
+			newEnemyPos(centrum);
+		}
+	}
     
     if(found_robot == 2){
         cvCircle(input, Right, 20, CV_RGB(250, 250, 250),2,1);
         cvCircle(input, Left, 20, CV_RGB(127, 127, 127), 2, 1);
-        cvCircle(input, pos.fruitPos, 20, CV_RGB(0, 0, 0), 2, 1);
+        //cvCircle(input, pos.fruitPos, 20, CV_RGB(0, 0, 0), 2, 1);
         double temp = sqrt((double)distance(Left.x,Left.y,Right.x,Right.y));
         temp = acos((Right.x-Left.x)/temp);
         temp = (temp/M_PI)*180;
@@ -1060,7 +1099,7 @@ static ObjectPos find_objects(bool find_fruit)
 	 }*/
 
 
-     cvShowImage("orientations!!!", input);
+     //cvShowImage("orientations!!!", input);
 
     blobs.ClearBlobs();
     cvReleaseImage(&img);
@@ -1201,6 +1240,7 @@ int selectGoal(ObjectPos pos, int foundEnemy){
 
 void giveOrders() 
 {
+	return;
     int counter = 0;
     double temp_angle = Angle;
     
@@ -1313,7 +1353,7 @@ void processCamera()
 		if (!found && (pos = find_objects(true)).found) {
 			found = 1;
 			std::vector<VisiLibity::Point> path;
-			CvPoint originalPos = pos.robotPos;
+//			CvPoint originalPos = pos.robotPos;
             path = visibility::find_robot_path(pos.robotPos, goal==1 ? goal1 : goal2);
 			printf("escaping\n");
 
@@ -1330,7 +1370,7 @@ void processCamera()
 	else{
 		if ((pos = find_objects(true)).found) {
 			std::vector<VisiLibity::Point> path;
-			CvPoint originalPos = pos.robotPos;
+//			CvPoint originalPos = pos.robotPos;
 
 			printf("attacking\n");
 			path = visibility::find_robot_path(pos.robotPos, enemyPos);			
