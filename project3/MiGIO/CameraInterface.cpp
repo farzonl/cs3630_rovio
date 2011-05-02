@@ -39,6 +39,184 @@ struct ObjectPos {
 	bool found;
 };
 
+
+CvPoint pongPos;
+int pongDir;
+//pongDir 
+//1 = up right
+//2 = up left
+//3 = down right
+//4 = down left
+
+int pongSize;
+
+void initializePong(int startingDir){
+	pongPos.x = 400;
+	pongPos.y = 300;
+	pongDir = startingDir;
+	pongSize = 20;
+}
+
+int updatePong(CvPoint LeftRobotPos, CvPoint RightRobotPos){
+	if(pongDir == 1){
+		pongPos.x = pongPos.x + pongSize;
+		pongPos.y = pongPos.y - pongSize;
+	}
+	if(pongDir == 2){
+		pongPos.x = pongPos.x - pongSize;
+		pongPos.y = pongPos.y - pongSize;
+	}
+	if(pongDir == 3){
+		pongPos.x = pongPos.x + pongSize;
+		pongPos.y = pongPos.y + pongSize;
+	}
+	if(pongDir == 4){
+		pongPos.x = pongPos.x - pongSize;
+		pongPos.y = pongPos.y + pongSize;
+	}
+	if(pongPos.x < 125){
+		if((abs(LeftRobotPos.x - (pongPos.x - 20)) < 30) && (abs(LeftRobotPos.y - pongPos.y) < 30)){
+			if(pongDir == 2){
+				pongDir = 1;
+			}
+			else{
+				pongDir = 3;
+			}
+		}
+		else{
+			return -1;
+		}
+	}
+	if(pongPos.x >675){
+		if((abs(RightRobotPos.x - (pongPos.x+20)) < 30) && (abs(RightRobotPos.y - pongPos.y) < 30)){
+			if(pongDir == 1){
+				pongDir = 2;
+			}
+			else{
+				pongDir = 4;
+			}
+		}
+		else{
+			return -2;
+		}
+	}
+	if(pongPos.y < 50){
+		if(pongDir == 1){
+			pongDir = 3;
+		}
+		else{
+			pongDir = 4;
+		}
+	}
+	if(pongPos.y > 550){
+		if(pongDir == 3){
+			pongDir = 1;
+		}
+		else{
+			pongDir = 2;
+		}
+	}
+	return 0;
+}
+
+CvPoint getLeftInterceptPos(){
+	CvPoint tempPongPos = pongPos;
+	int tempPongDir = pongDir;
+	while(tempPongPos.x > 125){
+		if(pongDir == 1){
+			pongPos.x = pongPos.x + pongSize;
+			pongPos.y = pongPos.y - pongSize;
+		}
+		if(pongDir == 2){
+			pongPos.x = pongPos.x - pongSize;
+			pongPos.y = pongPos.y - pongSize;
+		}
+		if(pongDir == 3){
+			pongPos.x = pongPos.x + pongSize;
+			pongPos.y = pongPos.y + pongSize;
+		}
+		if(pongDir == 4){
+			pongPos.x = pongPos.x - pongSize;
+			pongPos.y = pongPos.y + pongSize;
+		}
+		if(tempPongPos.x > 675){
+			if(pongDir == 1){
+				pongDir = 2;
+			}
+			else{
+				pongDir = 4;
+			}
+		}
+		if(pongPos.y < 50){
+			if(pongDir == 1){
+				pongDir = 3;
+			}
+			else{
+				pongDir = 4;
+			}
+		}
+		if(pongPos.y > 550){
+			if(pongDir == 3){
+				pongDir = 1;
+			}
+			else{
+				pongDir = 2;
+			}
+		}	
+	}
+	tempPongPos.x = tempPongPos.x - 25;
+	return tempPongPos;
+}
+
+CvPoint getRightInterceptPos(){
+		CvPoint tempPongPos = pongPos;
+	int tempPongDir = pongDir;
+	while(tempPongPos.x > 125){
+		if(pongDir == 1){
+			pongPos.x = pongPos.x + pongSize;
+			pongPos.y = pongPos.y - pongSize;
+		}
+		if(pongDir == 2){
+			pongPos.x = pongPos.x - pongSize;
+			pongPos.y = pongPos.y - pongSize;
+		}
+		if(pongDir == 3){
+			pongPos.x = pongPos.x + pongSize;
+			pongPos.y = pongPos.y + pongSize;
+		}
+		if(pongDir == 4){
+			pongPos.x = pongPos.x - pongSize;
+			pongPos.y = pongPos.y + pongSize;
+		}
+		if(tempPongPos.x < 125){
+			if(pongDir == 2){
+				pongDir = 1;
+			}
+			else{
+				pongDir = 3;
+			}
+		}
+		if(pongPos.y < 50){
+			if(pongDir == 1){
+				pongDir = 3;
+			}
+			else{
+				pongDir = 4;
+			}
+		}
+		if(pongPos.y > 550){
+			if(pongDir == 3){
+				pongDir = 1;
+			}
+			else{
+				pongDir = 2;
+			}
+		}	
+	}
+	tempPongPos.x = tempPongPos.x + 25;
+	return tempPongPos;
+}
+
 // try once to find the fruit and robot
 // result.found is true if found
 static ObjectPos find_objects(bool find_fruit, int sides = 3);
