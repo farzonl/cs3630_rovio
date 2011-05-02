@@ -10,7 +10,7 @@
 
 static const char *rovio_hosts[] = {
 	"143.215.110.131",
-	"143.215.110.22"
+	"143.215.110.120"
 };
 
 static int current_rovio = 0;

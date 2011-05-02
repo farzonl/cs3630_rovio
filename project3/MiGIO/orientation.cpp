@@ -117,7 +117,7 @@ void TriangleAlgorithm(CvPoint* Robot, CvPoint* orientation, CvPoint* Dest)
 	double radius       =  distance(Robot, Dest);
 	chordPoint          =  getCPoint(Robot,orientation,radius);
 	double chord        =  distance(&chordPoint, Dest);
-	chordMP             =   midPoint(&chordPoint, Dest);
+	chordMP             =  midPoint(&chordPoint, Dest);
 	double half         =  distance(Robot, &chordMP);
 	
 	double slope        =  (chord/2.0)/half;
@@ -140,11 +140,19 @@ void TriangleAlgorithm(CvPoint* Robot, CvPoint* orientation, CvPoint* Dest)
 	
 	//Add some ifdef win32 stuff here
 	//assert(isfinite(angle));
-	printf("Angle: %f\n",angle);
+	//printf("Angle: %f\n",angle);
 	//Angle = getDir(angle);
 	Angle = angle;
 	//assert(isfinite(angle));
 	printf("Angle: %f\n",Angle);
+}
+
+static bool angle_close(double test_angle, double want_angle)
+{
+	if (abs(test_angle - want_angle) <= 5) return true;
+	if (abs((test_angle + 360) - want_angle) <= 5) return true;
+	if (abs((test_angle - 360) - want_angle) <= 5) return true;
+	return false;
 }
 
 void giveOrders(CvPoint* point) 
@@ -154,7 +162,7 @@ void giveOrders(CvPoint* point)
 		savePoint = *point;
 		running = 1;
 	}
-	if( !(point->x >= savePoint.x+5)||!(point->x <= savePoint.x-5) &&(!(point->y >= savePoint.y+5)||!(point->y <= savePoint.y-5)))
+	if( !(point->x >= savePoint.x+100)||!(point->x <= savePoint.x-100) &&(!(point->y >= savePoint.y+100)||!(point->y <= savePoint.y-100)))
 	{
 		if(moveMessage == 'f')
 		{
@@ -209,47 +217,52 @@ void giveOrders(CvPoint* point)
     int counter = 0;
     double temp_angle = Angle;
 	
-	if(( (temp_angle >= -110.0) &&  (temp_angle <=-80.0) ) || ((temp_angle <=280.0) && (temp_angle >= 260.0)))
+	// Forward - 0
+	if(angle_close(temp_angle, 0))
 	{
 		rovio_forward(4);
-		moveMessage = 'f';
+		moveMessage = 'f'; printf("moveMessage: %c\n", moveMessage);
 		return;
 	}
 	
-	
-	if(( (temp_angle <= 110.0) &&  (temp_angle >= 80.0) ) || ((temp_angle <=-260.0) && (temp_angle >= -280.0)))
+	// Backward - 180
+	if(angle_close(temp_angle, 180))
 	{
 		rovio_backward(4);
-		moveMessage = 'b';
+		moveMessage = 'b'; printf("moveMessage: %c\n", moveMessage);
 		return;
 	}
 	
-	//225 degrees
-	if(((temp_angle >=-145.0) && (temp_angle <=-125.0)) || ((temp_angle <=235.0) && (temp_angle >= 215.0)))
+	// Forward Right - 360 minus 45
+	if(angle_close(temp_angle, 360 - 45))
 	{
 		rovio_DiagForRight(4);
-		moveMessage = 'e';
+		moveMessage = 'e'; printf("moveMessage: %c\n", moveMessage);
 		return;
 	}
-	//315 degrees
-	if(((temp_angle >=-55.0) && (temp_angle <=-35.0)) || ((temp_angle <=325.0) && (temp_angle >= 305.0)))
+	
+	// Forward Left - 0 plus 45
+	if(angle_close(temp_angle, 45))
 	{
 		rovio_DiagForLeft(4);
-		moveMessage = 'k';
+		moveMessage = 'k'; printf("moveMessage: %c\n", moveMessage);
 		return;
 	}
 	
-	if(((temp_angle >=-10.0) && (temp_angle <=10.0)) || ((temp_angle <=370.0) && (temp_angle >= 350.0)))
+	// Right - 270
+	if(angle_close(temp_angle, 270))
 	{
 		rovio_driveRight(4);
-		moveMessage = 'r';
+		moveMessage = 'r'; printf("moveMessage: %c\n", moveMessage);
 		return;
 	}
 	
-	if(((temp_angle >=-190.0) && (temp_angle <=-170.0)) || ((temp_angle <=190.0) && (temp_angle >= 170.0)))
-	{
+	// Left - 90
+	if(angle_close(temp_angle, 90))
+	{		
 		rovio_driveLeft(4);
 		moveMessage = 'l';
+		printf("moveMessage: %c\n", moveMessage);
 		return;
 	}
     temp_angle = abs(temp_angle); 

@@ -24,6 +24,7 @@ IplImage* visibility_graph_image = NULL;
 IplImage* GoalObstacleBackground = NULL;
 
 int numCameras=0;
+int curSide=3;
 char cameraName[20][1000];
 char cameraURL[20][50000];
 CvPoint goal1;
@@ -56,6 +57,18 @@ void initializePong(int startingDir){
 	pongSize = 20;
 }
 
+static int distance(int x1, int y1, int x2, int y2)
+{
+    int xd = x1-x2;
+    int yd = y1-y2;
+    return xd*xd+yd*yd;
+}
+
+static int pdistance(CvPoint a, CvPoint b)
+{
+    return distance(a.x, a.y, b.x, b.y);
+}
+
 int updatePong(CvPoint LeftRobotPos, CvPoint RightRobotPos){
 	if(pongDir == 1){
 		pongPos.x = pongPos.x + pongSize;
@@ -73,33 +86,38 @@ int updatePong(CvPoint LeftRobotPos, CvPoint RightRobotPos){
 		pongPos.x = pongPos.x - pongSize;
 		pongPos.y = pongPos.y + pongSize;
 	}
-	if(pongPos.x < 125){
-		if((abs(LeftRobotPos.x - (pongPos.x - 20)) < 30) && (abs(LeftRobotPos.y - pongPos.y) < 30)){
+	if(pongPos.x < 220){
+		printf("LEFT bounce\n");
+		if(pdistance(LeftRobotPos, pongPos) < 100*100){
 			if(pongDir == 2){
 				pongDir = 1;
 			}
 			else{
 				pongDir = 3;
 			}
+			return -3; // left score
 		}
 		else{
-			return -1;
+			return -2; // right score
 		}
 	}
-	if(pongPos.x >675){
-		if((abs(RightRobotPos.x - (pongPos.x+20)) < 30) && (abs(RightRobotPos.y - pongPos.y) < 30)){
+	if(pongPos.x > 630){
+		printf("RIGHT bounce\n");
+		if(pdistance(RightRobotPos, pongPos) < 100*100){
 			if(pongDir == 1){
 				pongDir = 2;
 			}
 			else{
 				pongDir = 4;
 			}
+			return -4; // right score
 		}
 		else{
-			return -2;
+			return -1; // left score
 		}
 	}
-	if(pongPos.y < 50){
+	if(pongPos.y < 40){
+		printf("TOP bounce\n");
 		if(pongDir == 1){
 			pongDir = 3;
 		}
@@ -107,7 +125,8 @@ int updatePong(CvPoint LeftRobotPos, CvPoint RightRobotPos){
 			pongDir = 4;
 		}
 	}
-	if(pongPos.y > 550){
+	if(pongPos.y > 395){
+		printf("BOTTOM bounce\n");
 		if(pongDir == 3){
 			pongDir = 1;
 		}
@@ -218,24 +237,12 @@ CvPoint getRightInterceptPos(){
 
 // try once to find the fruit and robot
 // result.found is true if found
-static ObjectPos find_objects(bool find_fruit, int sides = 3);
+static ObjectPos find_objects(bool find_fruit, int sides = curSide);
 
 // loop until find_objects finds the robot
 static ObjectPos find_robot();
 
 #pragma mark -- movement
-
-static int distance(int x1, int y1, int x2, int y2)
-{
-    int xd = x1-x2;
-    int yd = y1-y2;
-    return xd*xd+yd*yd;
-}
-
-static int pdistance(CvPoint a, CvPoint b)
-{
-    return distance(a.x, a.y, b.x, b.y);
-}
 
 namespace movement {
     static float angle_towards(int x1, int y1, int x2, int y2)
@@ -704,6 +711,7 @@ static IplImage *fetch_camera_image()
     //cvReleaseImage(&img);
     http_fetch(cameraURL[0],"Data/Camera0.jpg");
     img=cvLoadImage("Data/Camera0.jpg");
+	cvWaitKey(1);
 #else
     static CvCapture *cap = cvCaptureFromCAM(1);
     cvGrabFrame(cap);
@@ -720,7 +728,7 @@ static void setBackground(){
 	IplImage* img = NULL;
     
 	while(1){
-        key = cvWaitKey(30);
+        key = cvWaitKey(3);
         img = fetch_camera_image();
         
         cvShowImage("Display", img);
@@ -732,8 +740,8 @@ static void setBackground(){
 	printf("1: Set background\n");
 	
     background = cvCloneImage(img);
-	cvSmooth(img, background, CV_BILATERAL,5,5,50,50);
-	cvReleaseImage(&img);
+	//cvSmooth(img, background, CV_BILATERAL,5,5,50,50);
+	//cvReleaseImage(&img);
 	cvSaveImage("trace/background.jpg", background);
 }
 
@@ -745,7 +753,7 @@ static void resetGoalObstacleBackground(CvPoint robot, CvPoint enemy, CvPoint go
 	img = fetch_camera_image();
     
 	//while(1){
-    //  key = cvWaitKey(30);
+    //  key = cvWaitKey(3);
     
     //cvShowImage("Display", img);
     //if(key == '2')
@@ -754,8 +762,8 @@ static void resetGoalObstacleBackground(CvPoint robot, CvPoint enemy, CvPoint go
 	//}
     IplImage* temp = cvCloneImage(GoalObstacleBackground);
     GoalObstacleBackground = cvCloneImage(img);
-	cvSmooth(img, GoalObstacleBackground, CV_BILATERAL,5,5,50,50);
-    cvReleaseImage(&img);
+	//cvSmooth(img, GoalObstacleBackground, CV_BILATERAL,5,5,50,50);
+    //cvReleaseImage(&img);
     img = cvCloneImage(GoalObstacleBackground);
     
 	for(int i = 0; i < img->height; i++) {
@@ -814,7 +822,7 @@ static void setGoalObstacleBackground(){
 	IplImage* img = NULL;
     
 	while(1){
-        key = cvWaitKey(30);
+        key = cvWaitKey(3);
         img = fetch_camera_image();
         
         cvShowImage("Display", img);
@@ -826,8 +834,8 @@ static void setGoalObstacleBackground(){
 	printf("3: Set goals\n");
 	
     GoalObstacleBackground = cvCloneImage(img);
-	cvSmooth(img, GoalObstacleBackground, CV_BILATERAL,5,5,50,50);
-    cvReleaseImage(&img);
+	//cvSmooth(img, GoalObstacleBackground, CV_BILATERAL,5,5,50,50);
+    //cvReleaseImage(&img);
     img = cvCloneImage(GoalObstacleBackground);
     
 	for(int i = 0; i < img->height; i++) {
@@ -918,7 +926,7 @@ static void setObstacleBackground(){
     IplImage* img = NULL;
     
 	while(1){
-        key = cvWaitKey(30);
+        key = cvWaitKey(3);
         img = fetch_camera_image();
         
         cvShowImage("Display", img);
@@ -930,8 +938,8 @@ static void setObstacleBackground(){
 	printf("2: Set obstacles\n");
 
     ObstacleBackground = cvCloneImage(img);
-	cvSmooth(img, ObstacleBackground, CV_BILATERAL,5,5,50,50);
-    cvReleaseImage(&img);
+	//cvSmooth(img, ObstacleBackground, CV_BILATERAL,5,5,50,50);
+    //cvReleaseImage(&img);
     img = cvCloneImage(ObstacleBackground);
     
 	for(int i = 0; i < img->height; i++) {
@@ -1090,7 +1098,6 @@ static ObjectPos find_objects(bool find_fruit, int sides)
     
     input = fetch_camera_image();
     //cvDestroyWindow("Display");
-    cvWaitKey(1);
     
 	img = cvCloneImage(input);
 	//hsv_img = cvCloneImage(img);
@@ -1103,10 +1110,10 @@ static ObjectPos find_objects(bool find_fruit, int sides)
 	cvZero(enemy);
     // Smooth input image using a Gaussian filter, assign HSV, BW image
     imgCopy = cvCloneImage(img);
-    cvSmooth(imgCopy, img, CV_BILATERAL,5,5,50,50);
-    cvReleaseImage(&imgCopy);
+    //cvSmooth(imgCopy, img, CV_BILATERAL,5,5,50,50);
+    //cvReleaseImage(&imgCopy);
     
-	noRobots = GoalObstacleBackground ? GoalObstacleBackground : ObstacleBackground;
+	noRobots = GoalObstacleBackground ? GoalObstacleBackground : background;
 	
 	picWidth = noRobots->width;
 	picHeight = noRobots->height;
@@ -1235,6 +1242,7 @@ static ObjectPos find_objects(bool find_fruit, int sides)
 		break;
     }
 
+	if (sides == searchBoth) {
 	// find enemy
 	int foundEnemy = 0;
 	for (int i = 0; found_robot && i < enemys.GetNumBlobs(); i++ )
@@ -1252,6 +1260,7 @@ static ObjectPos find_objects(bool find_fruit, int sides)
 			foundEnemy = 1;
 			newEnemyPos(centrum);
 		}
+	}
 	}
     
     if(found_robot == 2){
@@ -1338,6 +1347,7 @@ static ObjectPos find_objects(bool find_fruit, int sides)
     
     // cvNamedWindow("Output Image - Blob Demo", 1);
     
+/*
 	{
 		static int imageCount = 0;
 		if(1){
@@ -1348,10 +1358,8 @@ static ObjectPos find_objects(bool find_fruit, int sides)
 			cvSaveImage(imageName.c_str(), input);
 		}
 	}
-     
-	cvCircle(input, pongPos, pongSize, CV_RGB(255, 255, 255), 2, 1);
-
-    cvShowImage("Output Image - Blob Demo", input);
+    */
+   // cvShowImage("Output Image - Blob Demo", input);
     cvWaitKey(1);
     
     cvReleaseImage(&input);
@@ -1380,7 +1388,7 @@ static void idleAwaitingObjects()
 	IplImage* img = NULL;
     
 	while(1){
-        key = cvWaitKey(30);
+        key = cvWaitKey(3);
         img = fetch_camera_image();
         
         cvShowImage("Display", img);
@@ -1461,6 +1469,8 @@ void processCamera()
 {
 	static int first = 1;
 	ObjectPos pos;
+	static CvFont font;
+	static int scoreL=0, scoreR=0;
 	
     if(first){
         first = 0;
@@ -1472,22 +1482,56 @@ void processCamera()
         idleAwaitingObjects();
 		
 		initializePong(1);
+		cvInitFont(&font,CV_FONT_HERSHEY_SIMPLEX|CV_FONT_ITALIC,1,1,0,1);
 		printf("returned from first\n");
 	}
 	
 	while (1) {
-		ObjectPos lPos = find_objects(false, searchLeft);
-		ObjectPos rPos = find_objects(false, searchRight);
+		curSide = searchLeft;
+		//dprintf("- search left\n");
+		ObjectPos lPos = find_objects(false);
+		curSide = searchRight;
+		//dprintf("- search right\n");
+		ObjectPos rPos = find_objects(false);
 		
 		if (!lPos.found || !rPos.found) continue;
-		
+		//CvPoint lI = getLeftInterceptPos();
+		//CvPoint rI = getRightInterceptPos();
 		int pongRes = updatePong(lPos.robotPos, rPos.robotPos);
 		
-		rovio_set_robot(0);
-		moveToPoint(getLeftInterceptPos(), lPos);
+		IplImage *pongimg = fetch_camera_image();
+		cvCircle(pongimg, pongPos, pongSize, CV_RGB(255, 255, 255), -1);
+		cvCircle(pongimg, lPos.robotPos, 20, CV_RGB(255, 255, 255), 2, 1);
+		cvCircle(pongimg, rPos.robotPos, 20, CV_RGB(255, 255, 255), 2, 1);
 		
-		rovio_set_robot(1);
-		moveToPoint(getRightInterceptPos(), rPos);
+		if (pongRes == -1 || pongRes == -3) {
+			scoreL++;
+			if (pongRes == -1) initializePong(1);
+		}
+		if (pongRes == -2 || pongRes == -4) {
+			scoreR++;
+			if (pongRes == -2) initializePong(1);
+		}
+		
+		cvLine(pongimg, cvPoint(220, 40), cvPoint(220, 395), CV_RGB(255,255,255), 4, CV_AA);
+		cvLine(pongimg, cvPoint(630, 40), cvPoint(630, 395), CV_RGB(255,255,255), 4, CV_AA);
+		
+		cvRectangle(pongimg, cvPoint(0,0), cvPoint(200,50), CV_RGB(255,0,0), 0);
+		char text[20];
+		sprintf(text, "Score %d/%d", scoreL, scoreR);
+		cvPutText (pongimg,text,cvPoint(15,30), &font, cvScalar(255,255,0));
+		
+		{
+			static int imageCount = 0;
+			if(1){
+				string imageName;
+				std::stringstream out;
+				out << "trace/trace" << imageCount++ <<".jpg";
+				imageName = out.str();
+				cvSaveImage(imageName.c_str(), pongimg);
+			}
+		}
+	    cvShowImage("Output Image - Blob Demo", pongimg);
 	}
 }
 

@@ -34,6 +34,7 @@ void http_interface_destroy() {
 
 void http_fetch( const char *url, const char *filename ) {
         CURL *curl = curl_easy_init();  
+		if (!filename) filename="/dev/null";
         int do_file = filename && strlen(filename) >= 1;
         
         FILE * fptr;
