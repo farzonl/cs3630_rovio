@@ -39,7 +39,6 @@ struct ObjectPos {
 	bool found;
 };
 
-
 CvPoint pongPos;
 int pongDir;
 //pongDir 
@@ -1350,6 +1349,8 @@ static ObjectPos find_objects(bool find_fruit, int sides)
 		}
 	}
      
+	cvCircle(input, pongPos, pongSize, CV_RGB(255, 255, 255), 2, 1);
+
     cvShowImage("Output Image - Blob Demo", input);
     cvWaitKey(1);
     
@@ -1470,7 +1471,23 @@ void processCamera()
         
         idleAwaitingObjects();
 		
+		initializePong(1);
 		printf("returned from first\n");
+	}
+	
+	while (1) {
+		ObjectPos lPos = find_objects(false, searchLeft);
+		ObjectPos rPos = find_objects(false, searchRight);
+		
+		if (!lPos.found || !rPos.found) continue;
+		
+		int pongRes = updatePong(lPos.robotPos, rPos.robotPos);
+		
+		rovio_set_robot(0);
+		moveToPoint(getLeftInterceptPos(), lPos);
+		
+		rovio_set_robot(1);
+		moveToPoint(getRightInterceptPos(), rPos);
 	}
 }
 
