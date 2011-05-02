@@ -39,187 +39,9 @@ struct ObjectPos {
 	bool found;
 };
 
-
-CvPoint pongPos;
-int pongDir;
-//pongDir 
-//1 = up right
-//2 = up left
-//3 = down right
-//4 = down left
-
-int pongSize;
-
-void initializePong(int startingDir){
-	pongPos.x = 400;
-	pongPos.y = 300;
-	pongDir = startingDir;
-	pongSize = 20;
-}
-
-int updatePong(CvPoint LeftRobotPos, CvPoint RightRobotPos){
-	if(pongDir == 1){
-		pongPos.x = pongPos.x + pongSize;
-		pongPos.y = pongPos.y - pongSize;
-	}
-	if(pongDir == 2){
-		pongPos.x = pongPos.x - pongSize;
-		pongPos.y = pongPos.y - pongSize;
-	}
-	if(pongDir == 3){
-		pongPos.x = pongPos.x + pongSize;
-		pongPos.y = pongPos.y + pongSize;
-	}
-	if(pongDir == 4){
-		pongPos.x = pongPos.x - pongSize;
-		pongPos.y = pongPos.y + pongSize;
-	}
-	if(pongPos.x < 125){
-		if((abs(LeftRobotPos.x - (pongPos.x - 20)) < 30) && (abs(LeftRobotPos.y - pongPos.y) < 30)){
-			if(pongDir == 2){
-				pongDir = 1;
-			}
-			else{
-				pongDir = 3;
-			}
-		}
-		else{
-			return -1;
-		}
-	}
-	if(pongPos.x >675){
-		if((abs(RightRobotPos.x - (pongPos.x+20)) < 30) && (abs(RightRobotPos.y - pongPos.y) < 30)){
-			if(pongDir == 1){
-				pongDir = 2;
-			}
-			else{
-				pongDir = 4;
-			}
-		}
-		else{
-			return -2;
-		}
-	}
-	if(pongPos.y < 50){
-		if(pongDir == 1){
-			pongDir = 3;
-		}
-		else{
-			pongDir = 4;
-		}
-	}
-	if(pongPos.y > 550){
-		if(pongDir == 3){
-			pongDir = 1;
-		}
-		else{
-			pongDir = 2;
-		}
-	}
-	return 0;
-}
-
-CvPoint getLeftInterceptPos(){
-	CvPoint tempPongPos = pongPos;
-	int tempPongDir = pongDir;
-	while(tempPongPos.x > 125){
-		if(pongDir == 1){
-			pongPos.x = pongPos.x + pongSize;
-			pongPos.y = pongPos.y - pongSize;
-		}
-		if(pongDir == 2){
-			pongPos.x = pongPos.x - pongSize;
-			pongPos.y = pongPos.y - pongSize;
-		}
-		if(pongDir == 3){
-			pongPos.x = pongPos.x + pongSize;
-			pongPos.y = pongPos.y + pongSize;
-		}
-		if(pongDir == 4){
-			pongPos.x = pongPos.x - pongSize;
-			pongPos.y = pongPos.y + pongSize;
-		}
-		if(tempPongPos.x > 675){
-			if(pongDir == 1){
-				pongDir = 2;
-			}
-			else{
-				pongDir = 4;
-			}
-		}
-		if(pongPos.y < 50){
-			if(pongDir == 1){
-				pongDir = 3;
-			}
-			else{
-				pongDir = 4;
-			}
-		}
-		if(pongPos.y > 550){
-			if(pongDir == 3){
-				pongDir = 1;
-			}
-			else{
-				pongDir = 2;
-			}
-		}	
-	}
-	tempPongPos.x = tempPongPos.x - 25;
-	return tempPongPos;
-}
-
-CvPoint getRightInterceptPos(){
-		CvPoint tempPongPos = pongPos;
-	int tempPongDir = pongDir;
-	while(tempPongPos.x > 125){
-		if(pongDir == 1){
-			pongPos.x = pongPos.x + pongSize;
-			pongPos.y = pongPos.y - pongSize;
-		}
-		if(pongDir == 2){
-			pongPos.x = pongPos.x - pongSize;
-			pongPos.y = pongPos.y - pongSize;
-		}
-		if(pongDir == 3){
-			pongPos.x = pongPos.x + pongSize;
-			pongPos.y = pongPos.y + pongSize;
-		}
-		if(pongDir == 4){
-			pongPos.x = pongPos.x - pongSize;
-			pongPos.y = pongPos.y + pongSize;
-		}
-		if(tempPongPos.x < 125){
-			if(pongDir == 2){
-				pongDir = 1;
-			}
-			else{
-				pongDir = 3;
-			}
-		}
-		if(pongPos.y < 50){
-			if(pongDir == 1){
-				pongDir = 3;
-			}
-			else{
-				pongDir = 4;
-			}
-		}
-		if(pongPos.y > 550){
-			if(pongDir == 3){
-				pongDir = 1;
-			}
-			else{
-				pongDir = 2;
-			}
-		}	
-	}
-	tempPongPos.x = tempPongPos.x + 25;
-	return tempPongPos;
-}
-
 // try once to find the fruit and robot
 // result.found is true if found
-static ObjectPos find_objects(bool find_fruit);
+static ObjectPos find_objects(bool find_fruit, int sides = 3);
 
 // loop until find_objects finds the robot
 static ObjectPos find_robot();
@@ -1043,12 +865,11 @@ static int RGB_filter3(int r, int g, int b, int threshold){
 
 void newEnemyPos(CvPoint place){
 	vector<CvPoint> newplaces;
-	if(enemyPositions.size() < 5){
+	if(enemyPositions.size() < 5) {
 		enemyPositions.push_back(place);
 		enemyPos = place;
 		enemyFound = true;
-	}
-	else{
+	} else {
 		enemyFound = false;
 		if((enemyPositions.at(4).x > (place.x - 300))&&(enemyPositions.at(4).x < (place.x + 300))&&
            (enemyPositions.at(4).y > (place.y - 300))&&(enemyPositions.at(4).y < (place.y + 300))){
@@ -1064,19 +885,31 @@ void newEnemyPos(CvPoint place){
 	}
     
 }
+
+// only look on the left or right side of the screen
+enum {
+	searchLeft = 1,
+	searchRight,
+	searchBoth
+};
+
 // finds robot and fruit
-static ObjectPos find_objects(bool find_fruit)
+static ObjectPos find_objects(bool find_fruit, int sides)
 {
 	IplImage* input;
     IplImage* img, *imgCopy;
     IplImage* i1;
 	IplImage* rob;
 	IplImage* enemy;
+	
+	IplImage* noRobots; // either obstacle or goal obstacle background
 	//IplImage* fruit;
 	
 	ObjectPos pos;
     CvPoint Left, Right;
 	pos.found = 0;
+	
+	int picWidth, picHeight;
     
     input = fetch_camera_image();
     //cvDestroyWindow("Display");
@@ -1096,6 +929,11 @@ static ObjectPos find_objects(bool find_fruit)
     cvSmooth(imgCopy, img, CV_BILATERAL,5,5,50,50);
     cvReleaseImage(&imgCopy);
     
+	noRobots = GoalObstacleBackground ? GoalObstacleBackground : ObstacleBackground;
+	
+	picWidth = noRobots->width;
+	picHeight = noRobots->height;
+	
 	for(int i = 0; i < img->height; i ++){
 		for(int j = 0; j < img->width; j++){
             int r, g, b, backr, backg, backb;
@@ -1103,9 +941,9 @@ static ObjectPos find_objects(bool find_fruit)
 			g = pixRGB(img, j, i, 1);
 			b = pixRGB(img, j, i, 0);
 			
-			backr = pixRGB(GoalObstacleBackground, j, i, 2);
-			backg = pixRGB(GoalObstacleBackground, j, i, 1);
-			backb = pixRGB(GoalObstacleBackground, j, i, 0);
+			backr = pixRGB(noRobots, j, i, 2);
+			backg = pixRGB(noRobots, j, i, 1);
+			backb = pixRGB(noRobots, j, i, 0);
             
 			if(((r-backr)*(r-backr) + (g-backg)*(g-backg)+ (b-backb)*(b-backb)) < 1000){
                 pixRGB(img, j, i, 2) = pixRGB(img, j, i, 1) = pixRGB(img, j, i, 0) = 0;
@@ -1180,11 +1018,14 @@ static ObjectPos find_objects(bool find_fruit)
         CvBox2D BlobEllipse = robBlobArea.GetEllipse();
         CvPoint centrum = cvPoint(BlobEllipse.center.x, BlobEllipse.center.y);
  
+		if ((sides == searchLeft) && centrum.x >= (picWidth/2)) continue;
+		if ((sides == searchRight) && centrum.x <= (picWidth/2)) continue;
+		
 		if (robBlobArea.Area() < 260) continue;
        
 		if (!found_robot) {
-        Left = centrum;
-        found_robot = 1;
+        	Left = centrum;
+        	found_robot = 1;
 		}
          
 		printf("Left %d/%d %d,%d area %f\n", i, robBlobs.GetNumBlobs(), Left.x, Left.y, robBlobArea.Area());
@@ -1200,6 +1041,9 @@ static ObjectPos find_objects(bool find_fruit)
         CvBox2D BlobEllipse = blobArea.GetEllipse();
         CvPoint centrum = cvPoint(BlobEllipse.center.x, BlobEllipse.center.y);
         
+		if ((sides == searchLeft) && centrum.x >= (picWidth/2)) continue;
+		if ((sides == searchRight) && centrum.x <= (picWidth/2)) continue;
+		
 		if (blobArea.Area() < 260) continue;
 		printf("Right %d/%d %d,%d area %f dist2 %d\n", i, blobs.GetNumBlobs(), centrum.x, centrum.y, blobArea.Area(), pdistance(centrum, Left));
 		{ blobArea.FillBlob(input, cvScalar(255, 0, 0));
@@ -1225,7 +1069,7 @@ static ObjectPos find_objects(bool find_fruit)
 		printf("Enemy %d/%d %d,%d area %f dist2 %d\n", i, enemys.GetNumBlobs(), centrum.x, centrum.y, blob.Area(), pdistance(centrum, Left));
         cvCircle(input, centrum, 20, CV_RGB(200, 200, 200),2, 1);
 
-		if (pdistance(centrum, Left) < 60*60) continue;
+		if (pdistance(centrum, Left) < 100*100) continue;
 		
 		if (!foundEnemy) {
 			foundEnemy = 1;
@@ -1416,62 +1260,6 @@ int selectGoal(ObjectPos pos, int foundEnemy){
 	}
 }
 
-void giveOrders() 
-{
-	return;
-    int counter = 0;
-    double temp_angle = Angle;
-    
-	if((temp_angle >=-45) && (temp_angle <45))
-	{
-		printf("- forward, angle %f\n", temp_angle);
-		rovio_forward(3); 
-		return;
-	}
-    
-	if((temp_angle >=-135) && (temp_angle <-45))
-	{
-		printf("- left, angle %f\n", temp_angle);
-		rovio_driveLeft(3);
-		return;
-	}
-	if((temp_angle >=45) &&(temp_angle < 135)){
-		printf("- right, angle %f\n", temp_angle);
-		rovio_driveRight(3);
-		return;
-	}
-	else{
-		printf("- back, angle %f\n", temp_angle);
-		rovio_backward(3);
-		return;
-	}
-    
-	while(temp_angle >=0) 
-    {
-        temp_angle-=20;
-        counter++;
-    }
-    
-	if (side == DirLeft)
-    {
-		if(counter != 0)
-		{
-			rovio_turnLeftByDegree(counter);
-			rovio_forward(3);
-        }
-        else if (side == DirCenter)
-            rovio_forward(3);
-        else
-        {
-			if(counter != 0)
-			{
-				rovio_turnRightByDegree(counter); 
-				rovio_forward(3);
-			}
-        }    
-	}
-}
-
 void moveToPoint(CvPoint p, ObjectPos pos){
 	CvPoint arbitrary;
 	
@@ -1482,17 +1270,17 @@ void moveToPoint(CvPoint p, ObjectPos pos){
 		CvPoint orientation = arbitrary;
 		CvPoint Dest = p;
 		TriangleAlgorithm(&Robot,&orientation,&Dest);
-		giveOrders();
+		giveOrders(&Robot);
 		goalPoint = p;
 		pos = find_robot();
 		
-		printf("distance = %f\n", sqrt(pdistance(pos.robotPos, p)));
+		printf("distance = %f\n", sqrt((double)pdistance(pos.robotPos, p)));
 	}
 }
 
 void processCamera()
 {
-    static int first = 1, placed = 0, found=0, goal = -1;
+	static int first = 1;
 	ObjectPos pos;
 	
     if(first){
@@ -1500,73 +1288,11 @@ void processCamera()
 		rovio_camera_height(low);
 
         setBackground();
-        setObstacleBackground();
-		setGoalObstacleBackground();
-        
-        //cvShowImage("visibility graph", visibility_image);
         cvWaitKey(3);
         
-        if (!placed) {
-            idleAwaitingObjects();
-            placed = 1;
-        }
-		pos = find_robot();
-		int misses = 0;
-		while(((pos.found != true) || (enemyFound !=true)) && (misses < 5)){
-			misses ++;
-			pos = find_robot();
-		}
-		if(misses == 5){
-			while(pos.found != true){
-				pos = find_robot();
-			}
-		}
-		goal = selectGoal(pos, enemyFound);
+        idleAwaitingObjects();
 		
 		printf("returned from first\n");
-	}
-	
-    try {
-	if(escape){
-		if (!found && (pos = find_objects(true)).found) {
-			found = 1;
-			std::vector<VisiLibity::Point> path;
-//			CvPoint originalPos = pos.robotPos;
-            path = visibility::find_robot_path(pos.robotPos, goal==1 ? goal1 : goal2);
-			printf("escaping\n");
-
-			for(int i = 0; i < path.size(); i ++){
-				int px = (int)(path.at(i)).x();
-				int py = (int)(path.at(i)).y();
-                
-				moveToPoint(cvPoint(px,py),pos);
-			}
-			
-			printf("escaped\n");
-		}
-	}
-	else{
-		if ((pos = find_objects(true)).found) {
-			std::vector<VisiLibity::Point> path;
-//			CvPoint originalPos = pos.robotPos;
-
-			printf("attacking\n");
-			path = visibility::find_robot_path(pos.robotPos, enemyPos);			
-			rovio_camera_height(middle);
-			
-			for(int i = 0; i < path.size(); i ++){
-				int px = (int)(path.at(i)).x();
-				int py = (int)(path.at(i)).y();
-                
-				moveToPoint(cvPoint(px,py),pos);
-			} 
-		}
-	}
-    } catch (std::exception &e) {
-        
-        printf("%s", e.what());
-        
-        throw;
 	}
 }
 

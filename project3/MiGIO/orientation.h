@@ -14,6 +14,10 @@ extern CvPoint dest;
 extern RovioDirection side;
 extern double Angle;
 
+extern int running;
+extern char moveMessage;
+extern CvPoint savePoint;
+
 CvPoint getCPoint(CvPoint* robot, CvPoint* orientation, double radius);
 
 CvPoint midPoint(CvPoint* a, CvPoint* b);
@@ -23,3 +27,5 @@ double distance(CvPoint* a, CvPoint* b);
 double getDir(double angle);
 
 void TriangleAlgorithm(CvPoint* Robot, CvPoint* orientation, CvPoint* Dest);
+
+void giveOrders(CvPoint* point);
