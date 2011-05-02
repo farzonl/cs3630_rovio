@@ -122,44 +122,44 @@ CvPoint getLeftInterceptPos(){
 	CvPoint tempPongPos = pongPos;
 	int tempPongDir = pongDir;
 	while(tempPongPos.x > 125){
-		if(pongDir == 1){
-			pongPos.x = pongPos.x + pongSize;
-			pongPos.y = pongPos.y - pongSize;
+		if(tempPongDir == 1){
+			tempPongPos.x = tempPongPos.x + pongSize;
+			tempPongPos.y = tempPongPos.y - pongSize;
 		}
-		if(pongDir == 2){
-			pongPos.x = pongPos.x - pongSize;
-			pongPos.y = pongPos.y - pongSize;
+		if(tempPongDir == 2){
+			tempPongPos.x = tempPongPos.x - pongSize;
+			tempPongPos.y = tempPongPos.y - pongSize;
 		}
-		if(pongDir == 3){
-			pongPos.x = pongPos.x + pongSize;
-			pongPos.y = pongPos.y + pongSize;
+		if(tempPongDir == 3){
+			tempPongPos.x = tempPongPos.x + pongSize;
+			tempPongPos.y = tempPongPos.y + pongSize;
 		}
-		if(pongDir == 4){
-			pongPos.x = pongPos.x - pongSize;
-			pongPos.y = pongPos.y + pongSize;
+		if(tempPongDir == 4){
+			tempPongPos.x = tempPongPos.x - pongSize;
+			tempPongPos.y = tempPongPos.y + pongSize;
 		}
 		if(tempPongPos.x > 675){
-			if(pongDir == 1){
-				pongDir = 2;
+			if(tempPongDir == 1){
+				tempPongDir = 2;
 			}
 			else{
-				pongDir = 4;
+				tempPongDir = 4;
 			}
 		}
-		if(pongPos.y < 50){
-			if(pongDir == 1){
-				pongDir = 3;
+		if(tempPongPos.y < 50){
+			if(tempPongDir == 1){
+				tempPongDir = 3;
 			}
 			else{
-				pongDir = 4;
+				tempPongDir = 4;
 			}
 		}
-		if(pongPos.y > 550){
-			if(pongDir == 3){
-				pongDir = 1;
+		if(tempPongPos.y > 550){
+			if(tempPongDir == 3){
+				tempPongDir = 1;
 			}
 			else{
-				pongDir = 2;
+				tempPongDir = 2;
 			}
 		}	
 	}
@@ -171,44 +171,44 @@ CvPoint getRightInterceptPos(){
 		CvPoint tempPongPos = pongPos;
 	int tempPongDir = pongDir;
 	while(tempPongPos.x > 125){
-		if(pongDir == 1){
-			pongPos.x = pongPos.x + pongSize;
-			pongPos.y = pongPos.y - pongSize;
+		if(tempPongDir == 1){
+			tempPongPos.x = tempPongPos.x + pongSize;
+			tempPongPos.y = tempPongPos.y - pongSize;
 		}
-		if(pongDir == 2){
-			pongPos.x = pongPos.x - pongSize;
-			pongPos.y = pongPos.y - pongSize;
+		if(tempPongDir== 2){
+			tempPongPos.x = tempPongPos.x - pongSize;
+			tempPongPos.y = tempPongPos.y - pongSize;
 		}
-		if(pongDir == 3){
-			pongPos.x = pongPos.x + pongSize;
-			pongPos.y = pongPos.y + pongSize;
+		if(tempPongDir == 3){
+			tempPongPos.x = tempPongPos.x + pongSize;
+			tempPongPos.y = tempPongPos.y + pongSize;
 		}
-		if(pongDir == 4){
-			pongPos.x = pongPos.x - pongSize;
-			pongPos.y = pongPos.y + pongSize;
+		if(tempPongDir == 4){
+			tempPongPos.x = tempPongPos.x - pongSize;
+			tempPongPos.y = tempPongPos.y + pongSize;
 		}
 		if(tempPongPos.x < 125){
-			if(pongDir == 2){
-				pongDir = 1;
+			if(tempPongDir == 2){
+				tempPongDir = 1;
 			}
 			else{
-				pongDir = 3;
+				tempPongDir= 3;
 			}
 		}
-		if(pongPos.y < 50){
-			if(pongDir == 1){
-				pongDir = 3;
+		if(tempPongPos.y < 50){
+			if(tempPongDir == 1){
+				tempPongDir = 3;
 			}
 			else{
-				pongDir = 4;
+				tempPongDir = 4;
 			}
 		}
-		if(pongPos.y > 550){
-			if(pongDir == 3){
-				pongDir = 1;
+		if(tempPongPos.y > 550){
+			if(tempPongDir == 3){
+				tempPongDir = 1;
 			}
 			else{
-				pongDir = 2;
+				tempPongDir= 2;
 			}
 		}	
 	}
