@@ -1,30 +1,41 @@
 # Team Gundam Rovio repo
 
-## report 1
+## Project 1: Dead Reckoning and Tracking
+###  Travel in a square motion.
+![](https://raw.githubusercontent.com/farzonl/cs3630_rovio/master/pictures/Tracking.png)
+###  Travel in a hour glass motion.
+![](https://raw.githubusercontent.com/farzonl/cs3630_rovio/master/pictures/HourGlassTracking.png)
+
+### report
 <object data="https://raw.githubusercontent.com/farzonl/cs3630_rovio/master/reports/Project1.pdf" type="application/pdf" width="700px" height="700px">
-    <embed src="https://raw.githubusercontent.com/farzonl/cs3630_rovio/master/reports/Project1.pdf">
-        <p>This browser does not support PDFs. Please download the PDF to view it: <a href="https://raw.githubusercontent.com/farzonl/cs3630_rovio/master/reports/Project1.pdf">Download PDF</a>.</p>
-    </embed>
+    <p>Github does not support embedded PDFs.<a href="https://raw.githubusercontent.com/farzonl/cs3630_rovio/master/reports/Project1.pdf"> Click here to view</a>.</p>
 </object>
 
-## report 2
+
+## Project 2: Visual Servoing
 <object data="https://raw.githubusercontent.com/farzonl/cs3630_rovio/master/reports/Project2.pdf" type="application/pdf" width="700px" height="700px">
-    <embed src="https://raw.githubusercontent.com/farzonl/cs3630_rovio/master/reports/Project2.pdf">
-        <p>This browser does not support PDFs. Please download the PDF to view it: <a href="https://raw.githubusercontent.com/farzonl/cs3630_rovio/master/reports/Project2.pdf">Download PDF</a>.</p>
-    </embed>
+    <p>Github does not support embedded PDFs.<a href="https://raw.githubusercontent.com/farzonl/cs3630_rovio/master/reports/Project2.pdf"> Click here to view</a>.</p>
 </object>
 
+## Project 3: Motion Planning
+### Planning using a Visibility Graph
+![](https://raw.githubusercontent.com/farzonl/cs3630_rovio/master/pictures/VisibilityGraph.png)
 
-## report 3
+### Planning using a Approximate Cell Decomposition
+![](https://raw.githubusercontent.com/farzonl/cs3630_rovio/master/pictures/ApproximateCellDecomposition.png)
+
+### report:
 <object data="https://raw.githubusercontent.com/farzonl/cs3630_rovio/master/reports/Project3.pdf" type="application/pdf" width="700px" height="700px">
-    <embed src="https://raw.githubusercontent.com/farzonl/cs3630_rovio/master/reports/Project3.pdf">
-        <p>This browser does not support PDFs. Please download the PDF to view it: <a href="https://raw.githubusercontent.com/farzonl/cs3630_rovio/master/reports/Project3.pdf">Download PDF</a>.</p>
-    </embed>
+    <p>Github does not support embedded PDFs. <a href="https://raw.githubusercontent.com/farzonl/cs3630_rovio/master/reports/Project3.pdf"> Click here to view</a>.</p>
 </object>
 
-## Final report
+## Final report:
 <object data="https://raw.githubusercontent.com/farzonl/cs3630_rovio/master/reports/FinalProjectJurassicPark.pdf" type="application/pdf" width="700px" height="700px">
-    <embed src="https://raw.githubusercontent.com/farzonl/cs3630_rovio/master/reports/FinalProjectJurassicPark.pdf">
-        <p>This browser does not support PDFs. Please download the PDF to view it: <a href="https://raw.githubusercontent.com/farzonl/cs3630_rovio/master/reports/FinalProjectJurassicPark.pdf">Download PDF</a>.</p>
-    </embed>
+    <p>Github does not support embedded PDFs. <a href="https://raw.githubusercontent.com/farzonl/cs3630_rovio/master/reports/FinalProjectJurassicPark.pdf"> Click here to view</a>.</p>
 </object>
+
+### Videos
+- https://youtu.be/95phHIn9YaI (Rovio Pong)
+- https://youtu.be/ZOO36BOUfes (Drive to Goal)
+- https://youtu.be/fJdwRdgYH8I (Attack Enemy)
+- https://youtu.be/14_B97a-wbI (Escape Enemy)
